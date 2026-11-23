@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gasapp — Precios de gasolina cerca de ti</title>
+<meta name="description" content="Gasapp: encuentra la gasolina más barata cerca de ti, con calificaciones de atención y litros completos reportadas por la comunidad.">
+<link rel="icon" type="image/png" href="assets/logo-gasapp.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#06231a">
+<style>
+  :root{
+    --fondo1:#07301f; --fondo2:#02120c;
+    --tarjeta:#0a3524; --tarjeta2:#0d4230;
+    --verde:#2fd35f; --verde-suave:#7ee2a0;
+    --amarillo:#ffd21f; --amarillo2:#f5b921;
+    --texto:#ffffff; --texto2:#cfe8d8;
+    --borde:rgba(126,226,160,.25);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    color:var(--texto);
+    background:linear-gradient(160deg,var(--fondo1) 0%,var(--fondo2) 70%);
+    background-attachment:fixed;
+    min-height:100vh;
+  }
+  header{
+    display:flex; gap:14px; align-items:center;
+    padding:16px; max-width:860px; margin:0 auto;
+  }
+  header img.logo{width:74px; height:74px; border-radius:18px; box-shadow:0 4px 18px rgba(0,0,0,.45);}
+  header h1{font-size:2rem; letter-spacing:.5px;}
+  header h1 .gas{color:#fff;} header h1 .app{color:var(--amarillo);}
+  header p{color:var(--texto2); font-size:.92rem; margin-top:2px;}
+  main{max-width:860px; margin:0 auto; padding:0 14px 40px;}
+  .aviso-datos{
+    background:rgba(255,210,31,.10); border:1px solid rgba(255,210,31,.35);
+    color:#ffe97a; border-radius:12px; padding:9px 12px; font-size:.85rem; margin-bottom:14px;
+  }
+  .panel{
+    background:var(--tarjeta); border:1px solid var(--borde);
+    border-radius:16px; padding:14px; margin-bottom:14px;
+  }
+  .fila{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .fila + .fila{margin-top:10px;}
+  .etiqueta{font-size:.82rem; color:var(--texto2); width:100%;}
+  button{
+    font:inherit; cursor:pointer; border-radius:999px; border:1px solid var(--borde);
+    background:var(--tarjeta2); color:var(--texto); padding:8px 14px;
+    display:inline-flex; align-items:center; gap:7px; font-size:.9rem;
+  }
+  button img{width:22px; height:22px; border-radius:6px;}
+  button.activo{background:var(--verde); color:#04240f; border-color:var(--verde); font-weight:700;}
+  button.destacado{background:var(--amarillo); color:#3a2c00; border-color:var(--amarillo); font-weight:700;}
+  button:disabled{opacity:.55; cursor:default;}
+  input[type="search"], input[type="number"], input[type="text"], textarea{
+    font:inherit; color:var(--texto); background:#06231a;
+    border:1px solid var(--borde); border-radius:10px; padding:9px 11px; width:100%;
+  }
+  textarea{resize:vertical; min-height:64px;}
+  input::placeholder, textarea::placeholder{color:#8fb8a1;}
+  .buscador{display:flex; gap:8px; align-items:center; flex:1; min-width:200px;}
+  .buscador img{width:30px; height:30px; border-radius:8px;}
+  .calc-grid{display:flex; flex-wrap:wrap; gap:10px;}
+  .calc-grid label{flex:1; min-width:130px; font-size:.85rem; color:var(--texto2);}
+  .calc-grid input{margin-top:5px;}
+  .calc-res{margin-top:11px; font-size:.95rem; line-height:1.55;}
+  .calc-res strong{color:var(--amarillo);}
+  .titulo-seccion{display:flex; align-items:center; gap:9px; font-size:1.05rem; margin:4px 0 10px;}
+  .titulo-seccion img{width:30px; height:30px; border-radius:8px;}
+  .tarjeta-est{
+    background:var(--tarjeta); border:1px solid var(--borde); border-radius:16px;
+    padding:13px 14px; margin-bottom:11px;
+  }
+  .tarjeta-est.mejor{border-color:var(--amarillo); box-shadow:0 0 0 1px var(--amarillo) inset;}
+  .est-top{display:flex; justify-content:space-between; gap:10px; align-items:flex-start;}
+  .est-nombre{font-weight:700; font-size:1.02rem;}
+  .est-meta{color:var(--texto2); font-size:.82rem; margin-top:2px;}
+  .insignia{
+    background:var(--amarillo); color:#3a2c00; font-weight:800; font-size:.72rem;
+    padding:4px 9px; border-radius:999px; white-space:nowrap;
+  }
+  .precios{display:flex; gap:8px; margin-top:11px; flex-wrap:wrap;}
+  .precio{
+    flex:1; min-width:96px; background:#06231a; border:1px solid var(--borde);
+    border-radius:12px; padding:8px 10px; text-align:center;
+  }
+  .precio .tipo{font-size:.75rem; color:var(--texto2); text-transform:uppercase; letter-spacing:.6px;}
+  .precio .valor{font-size:1.25rem; font-weight:800; margin-top:2px;}
+  .precio.sel{border-color:var(--verde); background:#0a3d24;}
+  .precio.sel .valor{color:var(--verde-suave);}
+  .precio.sin{opacity:.45;}
+  .est-acciones{display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; align-items:center;}
+  .calif{font-size:.88rem; color:var(--amarillo);}
+  .calif small{color:var(--texto2);}
+  .sin-calif{font-size:.85rem; color:var(--texto2);}
+  /* Modal de detalle */
+  #velo{
+    position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:50;
+    display:none; overflow-y:auto; padding:16px 10px;
+  }
+  #velo.abierto{display:block;}
+  .detalle{
+    background:var(--tarjeta); border:1px solid var(--borde); border-radius:18px;
+    max-width:640px; margin:0 auto; padding:18px;
+  }
+  .detalle h2{font-size:1.25rem;}
+  .cerrar{float:right;}
+  .afluencia{display:flex; align-items:flex-end; gap:3px; height:90px; margin:10px 0 4px;}
+  .afluencia .barra{
+    flex:1; background:var(--verde); border-radius:4px 4px 0 0; min-height:4px; position:relative;
+  }
+  .afluencia .barra.pico{background:var(--amarillo);}
+  .afluencia .barra.ahora{outline:2px solid #fff;}
+  .horas{display:flex; justify-content:space-between; font-size:.68rem; color:var(--texto2);}
+  .comentario{border-top:1px solid var(--borde); padding:10px 0;}
+  .comentario .quien{font-weight:700; font-size:.9rem;}
+  .comentario .cuando{color:var(--texto2); font-size:.78rem; font-weight:400;}
+  .comentario p{font-size:.92rem; margin-top:3px; line-height:1.45;}
+  .estrellas{display:inline-flex; gap:2px;}
+  .estrellas button{
+    background:none; border:none; padding:2px; font-size:1.45rem; color:#5b7a68; line-height:1;
+  }
+  .estrellas button.on{color:var(--amarillo);}
+  .campo{margin-top:11px;}
+  .campo label{display:block; font-size:.86rem; color:var(--texto2); margin-bottom:5px;}
+  .aviso{border-radius:10px; padding:9px 11px; font-size:.88rem; margin-top:11px; display:none;}
+  .aviso.error{display:block; background:rgba(255,80,80,.15); border:1px solid rgba(255,80,80,.5); color:#ffb3b3;}
+  .aviso.ok{display:block; background:rgba(47,211,95,.14); border:1px solid rgba(47,211,95,.5); color:#a9f0c2;}
+  footer{max-width:860px; margin:0 auto; padding:0 16px 30px; color:var(--texto2); font-size:.82rem; line-height:1.6;}
+  footer img{width:20px; height:20px; border-radius:5px; vertical-align:-5px;}
+  @media (max-width:520px){ header h1{font-size:1.6rem;} header img.logo{width:60px;height:60px;} }
+</style>
+</head>
+<body>
+<header>
+  <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
+  <div>
+    <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+    <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+  </div>
+</header>
+<main>
+  <div class="aviso-datos" id="avisoDatos"></div>
+
+  <section class="panel">
+    <div class="fila">
+      <button id="btnGps" class="destacado"><img src="assets/icono-mapa.png" alt=""> Usar mi ubicación (GPS)</button>
+      <span id="gpsMsg" style="font-size:.88rem; color:var(--texto2);"></span>
+    </div>
+    <div class="fila">
+      <span class="etiqueta">Combustible para ordenar y calcular:</span>
+      <button data-fuel="regular" class="fuel activo">Magna</button>
+      <button data-fuel="premium" class="fuel">Premium</button>
+      <button data-fuel="diesel" class="fuel">Diésel</button>
+    </div>
+    <div class="fila">
+      <span class="etiqueta">Ordenar por:</span>
+      <button data-sort="precio" class="sort activo"><img src="assets/icono-favoritos.png" alt=""> Mejor precio</button>
+      <button data-sort="cerca" class="sort"><img src="assets/icono-mapa.png" alt=""> Cercanía</button>
+      <button data-sort="calif" class="sort"><img src="assets/icono-resenas.png" alt=""> Calificación</button>
+    </div>
+    <div class="fila">
+      <div class="buscador">
+        <img src="assets/icono-buscar.png" alt="">
+        <input type="search" id="buscar" placeholder="Buscar estación por nombre o permiso…">
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="titulo-seccion"><img src="assets/icono-estadisticas.png" alt=""> Calculadora de ahorro</div>
+    <div class="calc-grid">
+      <label>Litros por carga
+        <input type="number" id="calcLitros" value="40" min="1" max="200">
+      </label>
+      <label>Cargas al mes
+        <input type="number" id="calcCargas" value="4" min="1" max="31">
+      </label>
+    </div>
+    <div class="calc-res" id="calcRes"></div>
+  </section>
+
+  <div class="titulo-seccion"><img src="assets/icono-favoritos.png" alt=""> Estaciones cerca de ti</div>
+  <section id="lista"></section>
+</main>
+
+<div id="velo">
+  <div class="detalle" id="detalle"></div>
+</div>
+
+<footer>
+  <p><img src="assets/icono-ajustes.png" alt=""> <strong>Fuente de precios:</strong> Comisión Nacional de Energía (CNE), listado oficial de precios reportados por los permisionarios (XML público, actualización diaria 18:00 h). Gasapp muestra una foto de esos datos; verifica siempre el precio en la bomba.</p>
+  <p>Las calificaciones y comentarios son de la comunidad. Si la conexión con el servidor de comentarios no está activa, tus opiniones se guardan solo en este dispositivo (modo local).</p>
+</footer>
+<script>
+"use strict";
+/* ============================================================
+   Gasapp — configuración
+   Pega aquí la URL de tu Worker de Cloudflare cuando lo despliegues
+   (ejemplo: "https://gasapp-api.TU-USUARIO.workers.dev").
+   Si queda vacío, la app funciona en MODO LOCAL: los comentarios
+   y calificaciones se guardan solo en este dispositivo.
+   ============================================================ */
+const API_BASE = "";
+
+/* Foto de datos reales: CNE, 22 de noviembre de 2026 (ver aviso en pantalla). */
+const ESTACIONES = [{"id": "8026", "nombre": "Consorcio Gasolinero Plus SA de CV", "permiso": "PL/6565/EXP/ES/2015", "lat": 19.45234, "lng": -99.14603, "regular": 23.99, "premium": 28.99, "diesel": null}, {"id": "10402", "nombre": "Servicio Guerrero Y Marte SA de CV", "permiso": "PL/9326/EXP/ES/2015", "lat": 19.45104, "lng": -99.14648, "regular": 23.39, "premium": 28.39, "diesel": null}, {"id": "11479", "nombre": "Nacional De Combustibles Y Lubricantes SA de CV", "permiso": "PL/10087/EXP/ES/2015", "lat": 19.45354, "lng": -99.15044, "regular": 23.99, "premium": null, "diesel": null}, {"id": "10893", "nombre": "Consorcio Gasolinero Plus SA de CV", "permiso": "PL/3203/EXP/ES/2015", "lat": 19.44662, "lng": -99.1388, "regular": 22.59, "premium": 27.99, "diesel": null}, {"id": "7874", "nombre": "Inmuebles Julien Sa", "permiso": "PL/6379/EXP/ES/2015", "lat": 19.45794, "lng": -99.15102, "regular": 23.39, "premium": null, "diesel": null}, {"id": "6542", "nombre": "Nacional De Combustibles Y Lubricantes SA de CV", "permiso": "PL/3569/EXP/ES/2015", "lat": 19.4481, "lng": -99.13245, "regular": 24.49, "premium": 29.59, "diesel": null}, {"id": "3417", "nombre": "Servicio Clave S de RL de CV", "permiso": "PL/1723/EXP/ES/2015", "lat": 19.4665, "lng": -99.14008, "regular": 23.99, "premium": 29.39, "diesel": 27.0}, {"id": "6733", "nombre": "Controladora De Estaciones De Servicio SA de CV", "permiso": "PL/4073/EXP/ES/2015", "lat": 19.46682, "lng": -99.14208, "regular": 23.99, "premium": 28.97, "diesel": 26.99}, {"id": "9658", "nombre": "Servicio Comonfort SA de CV", "permiso": "PL/8719/EXP/ES/2015", "lat": 19.44478, "lng": -99.13486, "regular": 23.99, "premium": 28.99, "diesel": null}, {"id": "9770", "nombre": "Consorcio Gasolinero Plus SA de CV", "permiso": "PL/8368/EXP/ES/2015", "lat": 19.45635, "lng": -99.12879, "regular": 23.99, "premium": 28.99, "diesel": null}, {"id": "6827", "nombre": "Servicio Ferrocarriles S de RL de CV", "permiso": "PL/4641/EXP/ES/2015", "lat": 19.44671, "lng": -99.1535, "regular": 23.79, "premium": 28.49, "diesel": null}, {"id": "24188", "nombre": "Servicio El Once SA de CV", "permiso": "PL/21028/EXP/ES/2018", "lat": 19.46811, "lng": -99.15266, "regular": 23.29, "premium": 27.85, "diesel": 26.89}, {"id": "11501", "nombre": "Nacional De Combustibles Y Lubricantes SA de CV", "permiso": "PL/10159/EXP/ES/2015", "lat": 19.46518, "lng": -99.12649, "regular": 23.99, "premium": 29.59, "diesel": null}, {"id": "2884", "nombre": "Grafel Sa", "permiso": "PL/1308/EXP/ES/2015", "lat": 19.46442, "lng": -99.15749, "regular": 24.19, "premium": 28.99, "diesel": 27.19}, {"id": "10541", "nombre": "Servicio Combusa SA de CV", "permiso": "PL/9594/EXP/ES/2015", "lat": 19.47282, "lng": -99.14275, "regular": 23.99, "premium": 28.99, "diesel": 26.99}, {"id": "4998", "nombre": "Servicio Aldama Sa", "permiso": "PL/5497/EXP/ES/2015", "lat": 19.4402, "lng": -99.15187, "regular": 23.99, "premium": 28.99, "diesel": 27.0}, {"id": "9398", "nombre": "Operadora Circunvalacion SA de CV", "permiso": "PL/8773/EXP/ES/2015", "lat": 19.4552, "lng": -99.16092, "regular": 22.99, "premium": 28.49, "diesel": 26.99}, {"id": "6428", "nombre": "Servicio Norte SA de CV", "permiso": "PL/4133/EXP/ES/2015", "lat": 19.45169, "lng": -99.12212, "regular": 21.69, "premium": 27.79, "diesel": null}, {"id": "4579", "nombre": "Servicio Museo SA de CV", "permiso": "PL/2724/EXP/ES/2015", "lat": 19.44205, "lng": -99.15618, "regular": 23.95, "premium": 28.73, "diesel": 26.99}, {"id": "10948", "nombre": "Consorcio Gasolinero Plus SA de CV", "permiso": "PL/3206/EXP/ES/2015", "lat": 19.4512, "lng": -99.162, "regular": 23.99, "premium": null, "diesel": 26.99}, {"id": "10357", "nombre": "Alejandro Mario Ochoa Fragoso", "permiso": "PL/9723/EXP/ES/2015", "lat": 19.4747, "lng": -99.1395, "regular": 23.99, "premium": 29.34, "diesel": 27.0}, {"id": "2975", "nombre": "Gasolinera El Ruedo SA de CV", "permiso": "PL/952/EXP/ES/2015", "lat": 19.47433, "lng": -99.14684, "regular": 23.71, "premium": 28.21, "diesel": 26.99}, {"id": "11059", "nombre": "Consorcio Gasolinero Plus SA de CV", "permiso": "PL/3210/EXP/ES/2015", "lat": 19.46712, "lng": -99.12436, "regular": 23.99, "premium": 28.99, "diesel": 26.99}, {"id": "24358", "nombre": "Servicio Qadira SA de CV", "permiso": "PL/21182/EXP/ES/2018", "lat": 19.459, "lng": -99.16275, "regular": 23.49, "premium": 27.85, "diesel": null}, {"id": "10478", "nombre": "Sabino Aguirre SA de CV", "permiso": "PL/9702/EXP/ES/2015", "lat": 19.4764, "lng": -99.13698, "regular": 23.79, "premium": 28.89, "diesel": null}, {"id": "11334", "nombre": "Select Operations SA de CV", "permiso": "PL/8147/EXP/ES/2015", "lat": 19.45798, "lng": -99.11799, "regular": 24.49, "premium": 28.89, "diesel": null}];
+
+/* Origen por defecto: Nonoalco Tlatelolco, CDMX. El GPS lo reemplaza. */
+let origen = { lat: 19.4551, lng: -99.1416, etiqueta: "Tlatelolco, CDMX (referencia)" };
+let combustible = "regular";
+let orden = "precio";
+let resumenes = {};   // id -> {promA, promL, n} según comentarios conocidos
+const NOMBRES_FUEL = { regular: "Magna", premium: "Premium", diesel: "Diésel" };
+
+document.getElementById("avisoDatos").textContent =
+  "Foto de datos del 22 de noviembre de 2026 · Fuente: Comisión Nacional de Energía (CNE) — " +
+  ESTACIONES.length + " estaciones alrededor de Tlatelolco, CDMX. Los precios cambian a diario: confirma en la bomba.";
+
+/* ---------- Utilidades ---------- */
+function distanciaKm(lat1, lng1, lat2, lng2) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function $(s) { return document.querySelector(s); }
+function esc(t) {
+  return String(t == null ? "" : t).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function dinero(n) { return "$" + n.toFixed(2); }
+
+/* ---------- Filtro de groserías (cliente; el servidor aplica el mismo) ---------- */
+const GROSERIAS = ["pendejo","pendeja","pendejos","pendejas","pendejada","pendejadas",
+  "chingar","chingada","chingado","chingados","chingadera","chingaderas","chingas","chingue",
+  "pinche","pinches","culero","culera","culeros","culeras","mierda","mierdas",
+  "verga","vergas","verguiza","puto","puta","putos","putas","putiza",
+  "cabron","cabrona","cabrones","mamada","mamadas","mamon","mamona","mamones",
+  "idiota","idiotas","imbecil","imbeciles","estupido","estupida","estupidos","estupidas",
+  "joto","jotos","marica","maricas","maricon","maricones","cono","ojete","ojetes",
+  "huevon","huevona","huevones","culiao","culiada","hdp","pende"];
+function normalizar(t) {
+  return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e").replace(/4/g, "a").replace(/@/g, "a").replace(/\$/g, "s");
+}
+function contieneGroserias(t) {
+  const tokens = normalizar(t).split(/[^a-z]+/).filter(Boolean);
+  return tokens.some(tok => GROSERIAS.includes(tok));
+}
+
+/* ---------- Comentarios: API o modo local ---------- */
+const LS_KEY = "gasapp_comentarios_v1";
+function comentariosLocales(id) {
+  try {
+    const todo = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+    return todo[id] || [];
+  } catch (e) { return []; }
+}
+function guardarLocal(id, c) {
+  const todo = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+  todo[id] = todo[id] || [];
+  todo[id].unshift(c);
+  localStorage.setItem(LS_KEY, JSON.stringify(todo));
+}
+async function cargarComentarios(id) {
+  if (API_BASE) {
+    try {
+      const r = await fetch(API_BASE + "/api/comentarios?estacion=" + encodeURIComponent(id));
+      if (r.ok) {
+        const data = await r.json();
+        return { lista: data.comentarios || [], fuente: "api" };
+      }
+    } catch (e) { /* cae a modo local */ }
+  }
+  return { lista: comentariosLocales(id), fuente: "local" };
+}
+async function enviarComentario(id, c) {
+  if (API_BASE) {
+    try {
+      const r = await fetch(API_BASE + "/api/comentarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estacion_id: id, nombre: c.nombre, atencion: c.atencion, litros: c.litros, texto: c.texto })
+      });
+      if (r.ok) return { ok: true, fuente: "api" };
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 400 && data.error) return { ok: false, error: data.error };
+    } catch (e) { /* cae a modo local */ }
+  }
+  guardarLocal(id, c);
+  return { ok: true, fuente: "local" };
+}
+function resumir(lista) {
+  if (!lista.length) return null;
+  const a = lista.reduce((s, c) => s + (+c.atencion || 0), 0) / lista.length;
+  const l = lista.reduce((s, c) => s + (+c.litros || 0), 0) / lista.length;
+  return { promA: a, promL: l, n: lista.length };
+}
+async function refrescarResumen(id) {
+  const { lista } = await cargarComentarios(id);
+  resumenes[id] = resumir(lista);
+  return lista;
+}
+
+/* ---------- Afluencia estimada (modelo por hora, varía por estación) ---------- */
+function perfilAfluencia(id) {
+  let semilla = 0;
+  for (const ch of String(id)) semilla = (semilla * 31 + ch.charCodeAt(0)) % 997;
+  const rnd = (n) => { const x = Math.sin(semilla * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
+  const perfil = [];
+  for (let h = 0; h < 24; h++) {
+    const pico = (c, w, a) => a * Math.exp(-((h - c) ** 2) / (2 * w * w));
+    let v = 6 + pico(8, 1.6, 62 + rnd(h) * 18) + pico(13.5, 1.8, 40 + rnd(h + 40) * 15) + pico(19, 2.0, 68 + rnd(h + 80) * 20);
+    if (h < 5) v = 3 + rnd(h) * 5;
+    perfil.push(Math.min(98, Math.round(v)));
+  }
+  return perfil;
+}
+function filaEstimada(pct) { return Math.max(0, Math.round((pct / 100) * 14)); }
+
+/* ---------- Render de la lista ---------- */
+function precioDe(est, fuel) { const p = est[fuel]; return (p === null || p === undefined) ? null : p; }
+function listaOrdenada() {
+  const q = normalizar($("#buscar").value || "");
+  let arr = ESTACIONES.map(e => ({ ...e, dist: distanciaKm(origen.lat, origen.lng, e.lat, e.lng) }));
+  if (q) arr = arr.filter(e => normalizar(e.nombre).includes(q) || normalizar(e.permiso).includes(q));
+  const conPrecio = arr.filter(e => precioDe(e, combustible) !== null);
+  const sinPrecio = arr.filter(e => precioDe(e, combustible) === null);
+  const claveCalif = e => {
+    const r = resumenes[e.id];
+    return r ? (r.promA + r.promL) / 2 : -1;
+  };
+  const ordenadores = {
+    precio: (a, b) => precioDe(a, combustible) - precioDe(b, combustible),
+    cerca: (a, b) => a.dist - b.dist,
+    calif: (a, b) => claveCalif(b) - claveCalif(a)
+  };
+  conPrecio.sort(ordenadores[orden]);
+  sinPrecio.sort((a, b) => a.dist - b.dist);
+  return conPrecio.concat(sinPrecio);
+}
+function bloquePrecio(est, fuel) {
+  const p = precioDe(est, fuel);
+  const sel = fuel === combustible ? " sel" : "";
+  if (p === null) return `<div class="precio sin${sel}"><div class="tipo">${NOMBRES_FUEL[fuel]}</div><div class="valor">—</div></div>`;
+  return `<div class="precio${sel}"><div class="tipo">${NOMBRES_FUEL[fuel]}</div><div class="valor">${dinero(p)}</div></div>`;
+}
+function bloqueCalif(est) {
+  const r = resumenes[est.id];
+  if (!r) return `<span class="sin-calif">Sin calificaciones todavía — sé el primero en opinar</span>`;
+  return `<span class="calif">★ ${((r.promA + r.promL) / 2).toFixed(1)} <small>· Atención ${r.promA.toFixed(1)} · Litros ${r.promL.toFixed(1)} · ${r.n} opinión(es)</small></span>`;
+}
+function render() {
+  const arr = listaOrdenada();
+  const mejorId = arr.length && precioDe(arr[0], combustible) !== null && orden === "precio" ? arr[0].id : null;
+  $("#lista").innerHTML = arr.map(est => `
+    <article class="tarjeta-est${est.id === mejorId ? " mejor" : ""}">
+      <div class="est-top">
+        <div>
+          <div class="est-nombre">${esc(est.nombre)}</div>
+          <div class="est-meta">Permiso ${esc(est.permiso)} · a ${est.dist.toFixed(1)} km de ${esc(origen.etiqueta)}</div>
+        </div>
+        ${est.id === mejorId ? `<span class="insignia">★ MEJOR PRECIO</span>` : ""}
+      </div>
+      <div class="precios">
+        ${bloquePrecio(est, "regular")}${bloquePrecio(est, "premium")}${bloquePrecio(est, "diesel")}
+      </div>
+      <div class="est-acciones">
+        ${bloqueCalif(est)}
+      </div>
+      <div class="est-acciones">
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${est.lat},${est.lng}" target="_blank" rel="noopener">
+          <button><img src="assets/icono-mapa.png" alt=""> Cómo llegar</button></a>
+        <button data-detalle="${est.id}"><img src="assets/icono-resenas.png" alt=""> Detalle, afluencia y opiniones</button>
+      </div>
+    </article>`).join("");
+  document.querySelectorAll("[data-detalle]").forEach(b =>
+    b.addEventListener("click", () => abrirDetalle(b.getAttribute("data-detalle"))));
+  calcularAhorro(arr);
+}
+function calcularAhorro(arrBase) {
+  const arr = (arrBase || listaOrdenada()).filter(e => precioDe(e, combustible) !== null);
+  const litros = Math.max(1, parseFloat($("#calcLitros").value) || 40);
+  const cargas = Math.max(1, parseFloat($("#calcCargas").value) || 4);
+  if (!arr.length) { $("#calcRes").textContent = "Sin estaciones con precio de " + NOMBRES_FUEL[combustible] + " en la lista."; return; }
+  const precios = arr.map(e => precioDe(e, combustible));
+  const min = Math.min(...precios), max = Math.max(...precios);
+  const barata = arr[precios.indexOf(min)], cara = arr[precios.indexOf(max)];
+  const porCarga = (max - min) * litros, alMes = porCarga * cargas;
+  $("#calcRes").innerHTML =
+    `Con <strong>${NOMBRES_FUEL[combustible]}</strong>: la más barata es <strong>${esc(barata.nombre)}</strong> a ${dinero(min)}/L ` +
+    `y la más cara <strong>${esc(cara.nombre)}</strong> a ${dinero(max)}/L.<br>` +
+    `Llenar ${litros} L cuesta ${dinero(min * litros)} contra ${dinero(max * litros)}: ` +
+    `ahorras <strong>${dinero(porCarga)} por carga</strong> y <strong>${dinero(alMes)} al mes</strong> con ${cargas} cargas.`;
+}
+
+/* ---------- Detalle ---------- */
+let detalleActual = null;
+async function abrirDetalle(id) {
+  const est = ESTACIONES.find(e => e.id === id);
+  if (!est) return;
+  detalleActual = est;
+  const dist = distanciaKm(origen.lat, origen.lng, est.lat, est.lng);
+  const perfil = perfilAfluencia(id);
+  const hora = new Date().getHours();
+  const barras = perfil.map((v, h) =>
+    `<div class="barra${v >= 70 ? " pico" : ""}${h === hora ? " ahora" : ""}" style="height:${Math.max(5, v)}%" title="${h}:00 — ${v}%"></div>`).join("");
+  $("#detalle").innerHTML = `
+    <button class="cerrar" id="btnCerrar">✕ Cerrar</button>
+    <h2>${esc(est.nombre)}</h2>
+    <p style="color:var(--texto2); font-size:.88rem; margin-top:3px;">
+      Permiso CNE ${esc(est.permiso)} · ${est.lat.toFixed(5)}, ${est.lng.toFixed(5)} · a ${dist.toFixed(1)} km
+    </p>
+    <div class="precios">
+      ${bloquePrecio(est, "regular")}${bloquePrecio(est, "premium")}${bloquePrecio(est, "diesel")}
+    </div>
+    <div class="titulo-seccion" style="margin-top:16px;"><img src="assets/icono-tiempo.png" alt=""> Afluencia estimada por hora</div>
+    <div class="afluencia">${barras}</div>
+    <div class="horas"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span></div>
+    <p style="font-size:.92rem; margin-top:7px;">Ahora (${hora}:00) la afluencia estimada es <strong>${perfil[hora]}%</strong>:
+      tiempo de fila aproximado <strong>${filaEstimada(perfil[hora])} min</strong>. Estimación de Gasapp, no medición en vivo.</p>
+    <div class="titulo-seccion" style="margin-top:16px;"><img src="assets/icono-comunidad.png" alt=""> Opiniones de la comunidad</div>
+    <div id="resumenDet"></div>
+    <div id="listaComentarios"><p style="color:var(--texto2);">Cargando…</p></div>
+    <div class="titulo-seccion" style="margin-top:16px;"><img src="assets/icono-resenas.png" alt=""> Deja tu opinión</div>
+    <form id="formOpinion">
+      <div class="campo">
+        <label>Tu nombre (opcional)</label>
+        <input type="text" id="opNombre" maxlength="60" placeholder="Ej. Vecino de Tlatelolco">
+      </div>
+      <div class="campo">
+        <label>Atención del personal</label>
+        <span class="estrellas" id="opAtencion"></span>
+      </div>
+      <div class="campo">
+        <label>Litros completos (¿te cargaron lo que pagaste?)</label>
+        <span class="estrellas" id="opLitros"></span>
+      </div>
+      <div class="campo">
+        <label>Tu comentario</label>
+        <textarea id="opTexto" maxlength="500" placeholder="Cuénta cómo te fue: atención, litros, fila, servicios…"></textarea>
+      </div>
+      <div class="aviso" id="opAviso"></div>
+      <div class="fila" style="margin-top:12px;">
+        <button type="submit" class="destacado"><img src="assets/icono-alertas.png" alt=""> Publicar opinión</button>
+      </div>
+      <p style="font-size:.8rem; color:var(--texto2); margin-top:8px;">
+        Sin groserías: los comentarios con lenguaje ofensivo no se publican.
+      </p>
+    </form>`;
+  $("#velo").classList.add("abierto");
+  $("#btnCerrar").addEventListener("click", cerrarDetalle);
+  montarEstrellas("#opAtencion"); montarEstrellas("#opLitros");
+  $("#formOpinion").addEventListener("submit", publicarOpinion);
+  await pintarComentarios(id);
+}
+function cerrarDetalle() { $("#velo").classList.remove("abierto"); detalleActual = null; }
+$("#velo").addEventListener("click", e => { if (e.target.id === "velo") cerrarDetalle(); });
+
+function montarEstrellas(sel) {
+  const cont = $(sel);
+  cont.dataset.valor = "0";
+  cont.innerHTML = "";
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = "★"; b.dataset.v = i;
+    b.setAttribute("aria-label", i + " estrellas");
+    b.addEventListener("click", () => {
+      cont.dataset.valor = String(i);
+      cont.querySelectorAll("button").forEach(x => x.classList.toggle("on", +x.dataset.v <= i));
+    });
+    cont.appendChild(b);
+  }
+}
+async function pintarComentarios(id) {
+  const { lista, fuente } = await cargarComentarios(id);
+  resumenes[id] = resumir(lista);
+  const r = resumenes[id];
+  $("#resumenDet").innerHTML = r
+    ? `<span class="calif">★ ${((r.promA + r.promL) / 2).toFixed(1)} <small>· Atención ${r.promA.toFixed(1)} · Litros completos ${r.promL.toFixed(1)} · ${r.n} opinión(es)${fuente === "local" ? " · guardadas en este dispositivo" : ""}</small></span>`
+    : `<span class="sin-calif">Todavía no hay opiniones de esta estación.</span>`;
+  $("#listaComentarios").innerHTML = lista.length ? lista.map(c => `
+    <div class="comentario">
+      <span class="quien">${esc(c.nombre || "Anónimo")}</span>
+      <span class="cuando">· ${esc((c.creado_en || c.fecha || "").toString().slice(0, 10))}</span><br>
+      <span class="calif">Atención ★${c.atencion} · Litros ★${c.litros}</span>
+      <p>${esc(c.texto)}</p>
+    </div>`).join("") : "";
+}
+async function publicarOpinion(ev) {
+  ev.preventDefault();
+  if (!detalleActual) return;
+  const aviso = $("#opAviso");
+  aviso.className = "aviso"; aviso.textContent = "";
+  const atencion = +($("#opAtencion").dataset.valor || 0);
+  const litros = +($("#opLitros").dataset.valor || 0);
+  const texto = $("#opTexto").value.trim();
+  const nombre = $("#opNombre").value.trim();
+  if (!atencion || !litros) { aviso.className = "aviso error"; aviso.textContent = "Califica la atención y los litros con las estrellas."; return; }
+  if (texto.length < 3) { aviso.className = "aviso error"; aviso.textContent = "Escribe un comentario un poco más completo."; return; }
+  if (contieneGroserias(texto) || (nombre && contieneGroserias(nombre))) {
+    aviso.className = "aviso error";
+    aviso.textContent = "Tu comentario contiene groserías y no se puede publicar. Cuéntalo con otras palabras, por favor.";
+    return;
+  }
+  const c = { nombre: nombre || "Anónimo", atencion, litros, texto, fecha: new Date().toISOString() };
+  const res = await enviarComentario(detalleActual.id, c);
+  if (!res.ok) {
+    aviso.className = "aviso error";
+    aviso.textContent = res.error || "No se pudo publicar. Inténtalo de nuevo.";
+    return;
+  }
+  aviso.className = "aviso ok";
+  aviso.textContent = res.fuente === "api"
+    ? "¡Gracias! Tu opinión quedó registrada para toda la comunidad."
+    : "¡Gracias! Tu opinión se guardó en este dispositivo (modo local).";
+  $("#opTexto").value = "";
+  await pintarComentarios(detalleActual.id);
+  render();
+}
+
+/* ---------- Controles ---------- */
+document.querySelectorAll(".fuel").forEach(b => b.addEventListener("click", () => {
+  combustible = b.dataset.fuel;
+  document.querySelectorAll(".fuel").forEach(x => x.classList.toggle("activo", x === b));
+  render();
+}));
+document.querySelectorAll(".sort").forEach(b => b.addEventListener("click", () => {
+  orden = b.dataset.sort;
+  document.querySelectorAll(".sort").forEach(x => x.classList.toggle("activo", x === b));
+  render();
+}));
+$("#buscar").addEventListener("input", render);
+$("#calcLitros").addEventListener("input", () => calcularAhorro());
+$("#calcCargas").addEventListener("input", () => calcularAhorro());
+$("#btnGps").addEventListener("click", () => {
+  const msg = $("#gpsMsg");
+  if (!navigator.geolocation) { msg.textContent = "Este navegador no ofrece geolocalización."; return; }
+  msg.textContent = "Buscando tu ubicación…";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      origen = { lat: pos.coords.latitude, lng: pos.coords.longitude, etiqueta: "tu ubicación" };
+      msg.textContent = "Ubicación detectada: distancias recalculadas desde donde estás.";
+      render();
+    },
+    () => { msg.textContent = "No se pudo obtener tu ubicación; se mantiene la referencia de Tlatelolco."; },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+});
+
+/* ---------- Arranque ---------- */
+(async function init() {
+  render();
+  await Promise.all(ESTACIONES.map(e => refrescarResumen(e.id).catch(() => {})));
+  render();
+})();
+</script>
+</body>
+</html>
