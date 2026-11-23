@@ -22,6 +22,10 @@ function fijarOrigen(o) {
   origen = o;
   try { sessionStorage.setItem("gasapp_origen", JSON.stringify(o)); } catch (e) { /* modo local */ }
 }
+function hayGPS() {
+  // Verdadero si en esta sesión ya se fijó la ubicación real (botón GPS).
+  try { return !!sessionStorage.getItem("gasapp_origen"); } catch (e) { return false; }
+}
 function pedirUbicacion(onOk, onError) {
   if (!navigator.geolocation) { if (onError) onError("Este navegador no ofrece geolocalización."); return; }
   navigator.geolocation.getCurrentPosition(
@@ -302,3 +306,463 @@ function initMenu() {
   document.addEventListener("keydown", ev => { if (ev.key === "Escape") cerrar(); });
 }
 document.addEventListener("DOMContentLoaded", initMenu);
+
+/* ============================================================
+   Radio en vivo: reproductor COMPARTIDO por toda la app.
+   Un solo <audio> creado aquí; su estado (estación, si sonaba y
+   volumen) vive en sessionStorage para retomarlo al cambiar de
+   página, con una barra inferior fija en todas las páginas y
+   controles del sistema vía Media Session API.
+   ============================================================ */
+const ESTACIONES_RADIO = [
+  { nombre: "Ibero 90.9", url: "https://shaincast.caster.fm:20866/listen.mp3" },
+  { nombre: "Radio UNAM 96.1", url: "https://tv.radiohosting.online:9484/stream" },
+  { nombre: "W Radio 96.9", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/W_RADIO.mp3" },
+  { nombre: "Reactor 105.7", url: "https://s2.mexside.net/8002/stream" },
+  { nombre: "Radio Educación 1060", url: "https://s2.mexside.net:8176/stream" }
+];
+const RADIO_KEY = "gasapp_radio";
+let radioAudio = null;        // el único <audio> de toda la app
+let radioIdx = -1;            // estación cargada (-1 = ninguna)
+let radioQueriaSonar = false; // intención: estaba sonando (para reanudar)
+let radioBloqueada = false;   // play() rechazado por política de autoplay
+let radioError = false;       // la señal no respondió
+
+function radioLeerEstado() {
+  try { return JSON.parse(sessionStorage.getItem(RADIO_KEY) || "null"); } catch (e) { return null; }
+}
+function radioGuardarEstado() {
+  try {
+    if (radioIdx < 0) { sessionStorage.removeItem(RADIO_KEY); return; }
+    sessionStorage.setItem(RADIO_KEY, JSON.stringify({
+      idx: radioIdx,
+      sonando: radioQueriaSonar,
+      volumen: radioAudio ? radioAudio.volume : 0.9
+    }));
+  } catch (e) { /* sin sessionStorage */ }
+}
+function radioElAudio() {
+  if (radioAudio) return radioAudio;
+  radioAudio = document.createElement("audio");
+  radioAudio.preload = "none";
+  radioAudio.setAttribute("playsinline", "");
+  radioAudio.addEventListener("play", () => {
+    radioQueriaSonar = true; radioBloqueada = false; radioError = false;
+    radioGuardarEstado(); radioMediaSesion(); radioPintar();
+  });
+  radioAudio.addEventListener("pause", () => {
+    // También capta pausas hechas desde los controles del sistema.
+    radioQueriaSonar = false;
+    radioGuardarEstado(); radioPintar();
+  });
+  radioAudio.addEventListener("error", () => {
+    if (radioIdx >= 0) { radioError = true; radioPintar(); }
+  }, true);
+  document.body.appendChild(radioAudio);
+  return radioAudio;
+}
+function radioIntentarPlay() {
+  const a = radioElAudio();
+  try {
+    const p = a.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(() => { radioBloqueada = true; radioPintar(); });
+    }
+  } catch (e) { radioBloqueada = true; radioPintar(); }
+}
+function radioCargar(i) {
+  const a = radioElAudio();
+  radioIdx = i;
+  radioError = false; radioBloqueada = false; radioQueriaSonar = true;
+  a.src = ESTACIONES_RADIO[i].url;
+  radioGuardarEstado();
+  radioMediaSesion();
+  radioIntentarPlay();
+  radioPintar();
+}
+function radioReproducir(i) {
+  if (i === radioIdx && radioAudio) { radioToggle(); return; }
+  radioCargar(i);
+}
+function radioToggle() {
+  if (radioIdx < 0) return;
+  const a = radioElAudio();
+  if (a.paused) {
+    radioQueriaSonar = true; radioBloqueada = false; radioError = false;
+    radioGuardarEstado();
+    radioIntentarPlay();
+  } else {
+    radioQueriaSonar = false;
+    radioGuardarEstado();
+    a.pause();
+  }
+  radioPintar();
+}
+function radioDetener() {
+  radioIdx = -1;
+  radioQueriaSonar = false; radioBloqueada = false; radioError = false;
+  if (radioAudio) {
+    radioAudio.pause();
+    radioAudio.removeAttribute("src");
+    try { radioAudio.load(); } catch (e) { /* nada que cargar */ }
+  }
+  radioGuardarEstado();
+  radioPintar();
+}
+function radioCambiar(delta) {
+  const n = ESTACIONES_RADIO.length;
+  if (!n) return;
+  const sig = radioIdx < 0 ? (delta > 0 ? 0 : n - 1) : (radioIdx + delta + n) % n;
+  if (sig === radioIdx) { radioToggle(); return; }
+  radioCargar(sig);
+}
+function radioFijarVolumen(v) {
+  const a = radioElAudio();
+  a.volume = Math.min(1, Math.max(0, v));
+  radioGuardarEstado();
+}
+function radioInfo() {
+  const st = radioLeerEstado();
+  return {
+    idx: radioIdx,
+    sonando: radioIdx >= 0 && !!radioAudio && !radioAudio.paused,
+    bloqueada: radioBloqueada,
+    error: radioError,
+    volumen: radioAudio ? radioAudio.volume : (st && typeof st.volumen === "number" ? st.volumen : 0.9)
+  };
+}
+/* Controles del sistema: notificación y pantalla bloqueada del teléfono. */
+function radioMediaSesion() {
+  if (!("mediaSession" in navigator)) return;
+  const ms = navigator.mediaSession;
+  const poner = (accion, fn) => { try { ms.setActionHandler(accion, fn); } catch (e) { /* acción no soportada */ } };
+  poner("play", () => radioToggle());
+  poner("pause", () => { if (radioAudio && !radioAudio.paused) radioToggle(); });
+  poner("previoustrack", () => radioCambiar(-1));
+  poner("nexttrack", () => radioCambiar(1));
+  poner("stop", () => radioDetener());
+  if (radioIdx >= 0 && typeof MediaMetadata !== "undefined") {
+    try {
+      ms.metadata = new MediaMetadata({
+        title: ESTACIONES_RADIO[radioIdx].nombre,
+        artist: "Gasapp Radio",
+        album: "Radio en vivo · Gasapp"
+      });
+    } catch (e) { /* sin metadatos */ }
+  }
+}
+/* ---------- Barra inferior (mini-reproductor) ---------- */
+function radioCrearBarra() {
+  if (document.getElementById("barraRadio")) return;
+  const barra = document.createElement("div");
+  barra.className = "barra-radio";
+  barra.id = "barraRadio";
+  barra.hidden = true;
+  barra.innerHTML =
+    '<button type="button" class="br-btn" id="brPrev" aria-label="Estación anterior">⏮</button>' +
+    '<button type="button" class="br-btn br-play" id="brPlay" aria-label="Reproducir la radio">▶</button>' +
+    '<button type="button" class="br-btn" id="brNext" aria-label="Estación siguiente">⏭</button>' +
+    '<a class="br-nombre" id="brNombre" href="radio.html"></a>' +
+    '<span class="br-estado" id="brEstado"></span>' +
+    '<button type="button" class="br-btn" id="brStop" aria-label="Detener la radio">■</button>';
+  document.body.appendChild(barra);
+  barra.querySelector("#brPrev").addEventListener("click", () => radioCambiar(-1));
+  barra.querySelector("#brNext").addEventListener("click", () => radioCambiar(1));
+  barra.querySelector("#brPlay").addEventListener("click", radioToggle);
+  barra.querySelector("#brStop").addEventListener("click", radioDetener);
+}
+function radioPintar() {
+  const barra = document.getElementById("barraRadio");
+  if (barra) {
+    const info = radioInfo();
+    barra.hidden = info.idx < 0;
+    document.body.classList.toggle("con-barra-radio", info.idx >= 0);
+    if (info.idx >= 0) {
+      barra.querySelector("#brNombre").textContent = ESTACIONES_RADIO[info.idx].nombre;
+      const btnPlay = barra.querySelector("#brPlay");
+      btnPlay.textContent = info.sonando ? "⏸" : "▶";
+      btnPlay.setAttribute("aria-label", info.sonando ? "Pausar la radio" : "Reproducir la radio");
+      barra.querySelector("#brEstado").textContent =
+        info.error ? "Señal no disponible" :
+        info.sonando ? "EN VIVO" :
+        info.bloqueada ? "Seguir escuchando" : "En pausa";
+      barra.classList.toggle("sonando", info.sonando);
+    }
+  }
+  // radio.html dibuja además sus tarjetas desde el mismo estado.
+  if (typeof window.radioPintarPagina === "function") window.radioPintarPagina();
+}
+function initRadio() {
+  radioCrearBarra();
+  const st = radioLeerEstado();
+  if (st && ESTACIONES_RADIO[st.idx]) {
+    radioIdx = st.idx;
+    const a = radioElAudio();
+    a.src = ESTACIONES_RADIO[radioIdx].url;
+    if (typeof st.volumen === "number") a.volume = Math.min(1, Math.max(0, st.volumen));
+    radioMediaSesion();
+    if (st.sonando) {
+      radioQueriaSonar = true;
+      radioIntentarPlay(); // si el navegador lo bloquea, la barra ofrece «Seguir escuchando»
+    }
+  }
+  radioPintar();
+}
+document.addEventListener("DOMContentLoaded", initRadio);
+
+/* ============================================================
+   Asistente (chat local en burbuja): responde SOLO con los datos
+   de la app — datos.js, el GPS de la sesión y la bitácora de
+   rendimiento — por coincidencia de palabras clave. Sin API.
+   ============================================================ */
+function botDistanciaTxt(est) {
+  if (!hayGPS()) return "";
+  return " a " + distanciaKm(origen.lat, origen.lng, est.lat, est.lng).toFixed(1) + " km de ti";
+}
+function botPreciosTxt(est) {
+  return ["regular", "premium", "diesel"].map(f => {
+    const p = precioDe(est, f);
+    return NOMBRES_FUEL[f] + " " + (p === null ? "—" : dinero(p));
+  }).join(" · ");
+}
+function botExtremo(fuel, dir) { // dir: -1 = más barata, 1 = más cara
+  let sel = null;
+  for (const e of ESTACIONES) {
+    const p = precioDe(e, fuel);
+    if (p === null) continue;
+    if (sel === null || (dir < 0 ? p < precioDe(sel, fuel) : p > precioDe(sel, fuel))) sel = e;
+  }
+  return sel;
+}
+const BOT_GENERICAS = new Set(["sa", "de", "cv", "s", "rl", "servicio", "servicios",
+  "gasolinero", "gasolinera", "nacional", "combustibles", "lubricantes", "estaciones"]);
+function botBuscarEstacion(t) {
+  // Por el número distintivo del permiso (ej. «4133»).
+  const porPermiso = ESTACIONES.find(e => t.includes(e.permiso.split("/")[1]));
+  if (porPermiso) return { tipo: "una", est: porPermiso };
+  const palabras = new Set(t.split(/[^a-z0-9]+/).filter(Boolean));
+  const candidatos = [];
+  for (const e of ESTACIONES) {
+    const claves = normalizar(e.nombre).split(/[^a-z]+/)
+      .filter(w => w.length >= 4 && !BOT_GENERICAS.has(w));
+    const hits = claves.filter(k => palabras.has(k)).length;
+    if (hits) candidatos.push({ e, hits });
+  }
+  if (!candidatos.length) return null;
+  candidatos.sort((a, b) => b.hits - a.hits);
+  const tope = candidatos[0].hits;
+  const mejores = candidatos.filter(c => c.hits === tope);
+  if (mejores.length === 1) return { tipo: "una", est: mejores[0].e };
+  return { tipo: "varias", lista: mejores.slice(0, 4).map(c => c.e) };
+}
+function botTxtVarias(b) {
+  return "Hay varias estaciones con ese nombre: " +
+    b.lista.map(e => "<strong>" + esc(e.nombre) + "</strong> (permiso " + esc(e.permiso) + ")").join(", ") +
+    ". Dime el número de permiso para distinguirla.";
+}
+function botRegistrosRendimiento() {
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem("gasapp_rendimiento") || "[]"); } catch (e) { arr = []; }
+  if (!Array.isArray(arr) || arr.length < 2) return { conDatos: false };
+  const ord = [...arr].sort((a, b) => a.odometro - b.odometro);
+  let km = 0, litros = 0, n = 0;
+  for (let i = 1; i < ord.length; i++) {
+    const rec = ord[i].odometro - ord[i - 1].odometro;
+    if (rec > 0 && ord[i].litros > 0) { km += rec; litros += ord[i].litros; n++; }
+  }
+  if (!n || litros <= 0) return { conDatos: false };
+  return { conDatos: true, promedio: km / litros, n };
+}
+function botRespuesta(textoCrudo) {
+  const t = " " + normalizar(textoCrudo) + " ";
+  const fuel = /premium/.test(t) ? "premium" : /diesel/.test(t) ? "diesel" : "regular";
+  const nombreFuel = NOMBRES_FUEL[fuel];
+
+  /* --- Radio: poner una estación o listarlas --- */
+  const ALIAS_RADIO = [["ibero", 0], ["unam", 1], ["w radio", 2], ["wradio", 2], ["reactor", 3], ["educacion", 4]];
+  let idxRadio = -1;
+  for (const [alias, i] of ALIAS_RADIO) if (t.includes(alias)) { idxRadio = i; break; }
+  if (idxRadio >= 0 && /\s(pon|reproduce|escuchar|escucha|toca)\s/.test(t)) {
+    radioReproducir(idxRadio);
+    return "Poniendo <strong>" + esc(ESTACIONES_RADIO[idxRadio].nombre) + "</strong> en vivo. " +
+      "Suena en toda la app: sigue navegando y contrólala desde la barra inferior o desde los controles de tu teléfono.";
+  }
+  if (/\bradio\b/.test(t)) {
+    return "En Gasapp puedes escuchar en vivo: <strong>" +
+      ESTACIONES_RADIO.map(r => esc(r.nombre)).join(", ") +
+      "</strong>. Dime «pon Reactor» y la pongo aquí mismo, o ve a la página de Radio.";
+  }
+
+  /* --- Rendimiento --- */
+  if (/rendimiento/.test(t)) {
+    if (/(como funciona|que es|como se calcula|como lo mido|explica)/.test(t)) {
+      return "El <strong>rendimiento</strong> mide cuántos kilómetros recorres por litro: al registrar " +
+        "cada carga con el kilometraje de tu odómetro, Gasapp resta el kilometraje de la carga anterior " +
+        "y lo divide entre los litros de la carga nueva (km recorridos ÷ litros). Si en una estación te " +
+        "dan menos litros de los que pagas, tu rendimiento ahí baja: así detectas litros incompletos. " +
+        "Es más fiel si llenas el tanque en cada carga. Registra tus cargas en la página de <strong>Rendimiento</strong>.";
+    }
+    const regs = botRegistrosRendimiento();
+    if (regs.conDatos) {
+      return "Tu rendimiento promedio es de <strong>" + regs.promedio.toFixed(1) + " km/L</strong>, " +
+        "medido en " + regs.n + " carga(s) de tu bitácora. El detalle por estación está en la página de <strong>Rendimiento</strong>.";
+    }
+    return "Todavía no tienes cargas suficientes en tu bitácora para calcular tu rendimiento " +
+      "(se necesitan al menos dos cargas con odómetro). Registra tus cargas en la página de " +
+      "<strong>Rendimiento</strong> y te digo tu promedio en km/L.";
+  }
+
+  /* --- Afluencia --- */
+  if (/(gente|afluencia|fila|lleno|llena|tranquil)/.test(t)) {
+    const b = botBuscarEstacion(t);
+    if (b && b.tipo === "una") {
+      const perfil = perfilAfluencia(b.est.id);
+      let mejorHora = 6, menor = Infinity;
+      for (let h = 6; h <= 22; h++) if (perfil[h] < menor) { menor = perfil[h]; mejorHora = h; }
+      return "En <strong>" + esc(b.est.nombre) + "</strong>, la hora con menos gente según el modelo de " +
+        "afluencia de Gasapp es alrededor de las <strong>" + mejorHora + ":00</strong> (afluencia estimada " +
+        "del " + menor + "%, fila de unos " + filaEstimada(menor) + " min). Es una estimación de la app, no una medición en vivo.";
+    }
+    if (b && b.tipo === "varias") return botTxtVarias(b);
+    return "¿De qué estación quieres saber la afluencia? Dime su nombre, por ejemplo: " +
+      "«¿a qué hora hay menos gente en Servicio Norte?».";
+  }
+
+  /* --- La más cercana --- */
+  if (/(cerca|cercana|cercano|proxim)/.test(t)) {
+    if (!hayGPS()) {
+      return "Todavía no conozco tu ubicación en esta sesión. Toca el botón " +
+        "<strong>«Usar mi ubicación (GPS)»</strong> en el Inicio o en el Mapa y pregúntame de nuevo: te digo cuál te queda más cerca.";
+    }
+    let cerca = null, dMin = Infinity;
+    for (const e of ESTACIONES) {
+      const d = distanciaKm(origen.lat, origen.lng, e.lat, e.lng);
+      if (d < dMin) { dMin = d; cerca = e; }
+    }
+    return "La estación más cerca de ti es <strong>" + esc(cerca.nombre) + "</strong>, a <strong>" +
+      dMin.toFixed(1) + " km</strong>. Sus precios: " + botPreciosTxt(cerca) + ".";
+  }
+
+  /* --- Ahorro --- */
+  if (/ahorr/.test(t)) {
+    const barata = botExtremo(fuel, -1), cara = botExtremo(fuel, 1);
+    if (!barata || !cara) return "No tengo precios de " + nombreFuel + " en la lista para calcular el ahorro.";
+    const mLitros = t.match(/(\d+(?:[.,]\d+)?)\s*(litros|l\b)/);
+    const litros = mLitros ? parseFloat(mLitros[1].replace(",", ".")) : 40;
+    const porCarga = (precioDe(cara, fuel) - precioDe(barata, fuel)) * litros;
+    let r = "Cargando <strong>" + litros + " L</strong> de " + nombreFuel + " en la más barata " +
+      "(<strong>" + esc(barata.nombre) + "</strong>, " + dinero(precioDe(barata, fuel)) + "/L) en vez de " +
+      "en la más cara (<strong>" + esc(cara.nombre) + "</strong>, " + dinero(precioDe(cara, fuel)) + "/L), " +
+      "ahorras <strong>" + dinero(porCarga) + "</strong> por carga.";
+    const mCargas = t.match(/(\d+)\s*cargas/);
+    if (mCargas || /\bmes\b/.test(t)) {
+      const cargas = mCargas ? parseInt(mCargas[1], 10) : 4;
+      r += " Con " + cargas + " cargas al mes, son <strong>" + dinero(porCarga * cargas) + "</strong>.";
+    }
+    return r;
+  }
+
+  /* --- La más barata --- */
+  if (/(barat|economic)/.test(t)) {
+    const barata = botExtremo(fuel, -1);
+    if (!barata) return "No tengo precios de " + nombreFuel + " en la lista.";
+    return "La " + nombreFuel + " más barata está en <strong>" + esc(barata.nombre) + "</strong> a " +
+      "<strong>" + dinero(precioDe(barata, fuel)) + "</strong> por litro" + botDistanciaTxt(barata) +
+      ". Es de la foto de datos del " + FECHA_FOTO + "; confirma el precio en la bomba.";
+  }
+
+  /* --- Precio de una estación nombrada --- */
+  const b = botBuscarEstacion(t);
+  if (b && b.tipo === "una") {
+    return "<strong>" + esc(b.est.nombre) + "</strong> (" + esc(b.est.permiso) + ")" + botDistanciaTxt(b.est) +
+      " tiene estos precios: " + botPreciosTxt(b.est) + ".";
+  }
+  if (b && b.tipo === "varias") return botTxtVarias(b);
+
+  /* --- Saludo / ayuda --- */
+  if (/^\s*(hola|buenas|hey|que tal|buenos dias|buenas tardes|buenas noches)\b/.test(t.trim()) ||
+      /(ayuda|que puedes|para que sirves|que sabes hacer)/.test(t)) {
+    return "¡Hola! Soy el asistente de <strong>Gasapp</strong> y respondo con los datos de la app. " +
+      "Pregúntame por la gasolina <strong>más barata</strong>, el <strong>precio de una estación</strong>, " +
+      "<strong>cuánto ahorras</strong> por carga, la estación <strong>más cercana</strong>, la hora con " +
+      "<strong>menos gente</strong>, la <strong>radio</strong> en vivo o tu <strong>rendimiento</strong> en km/L.";
+  }
+
+  /* --- Fuera de tema --- */
+  return "Eso todavía no lo sé contestar. Puedo ayudarte con: la gasolina <strong>más barata</strong>, " +
+    "el <strong>precio de una estación</strong>, <strong>cuánto ahorras</strong> por carga, la estación " +
+    "<strong>más cercana</strong>, la hora con <strong>menos gente</strong>, poner la <strong>radio</strong> " +
+    "y tu <strong>rendimiento</strong> en km/L.";
+}
+/* ---------- Interfaz del chat ---------- */
+const CHAT_SUGERENCIAS = [
+  "¿Cuál es la Magna más barata?",
+  "¿Cuánto ahorro si cargo 40 litros?",
+  "¿Cuál me queda más cerca?",
+  "¿Qué estaciones de radio hay?"
+];
+let chatSaludoMostrado = false;
+function chatCrear() {
+  if (document.getElementById("chatBurbuja")) return;
+  const burbuja = document.createElement("button");
+  burbuja.type = "button";
+  burbuja.className = "chat-burbuja";
+  burbuja.id = "chatBurbuja";
+  burbuja.setAttribute("aria-label", "Abrir el asistente de Gasapp");
+  burbuja.textContent = "💬";
+  document.body.appendChild(burbuja);
+  const panel = document.createElement("div");
+  panel.className = "chat-panel";
+  panel.id = "chatPanel";
+  panel.hidden = true;
+  panel.innerHTML =
+    '<div class="chat-cabeza"><span>Asistente Gasapp</span>' +
+    '<button type="button" id="chatCerrar" aria-label="Cerrar el chat">✕</button></div>' +
+    '<div class="chat-msjs" id="chatMsjs"></div>' +
+    '<div class="chat-chips" id="chatChips">' +
+    CHAT_SUGERENCIAS.map(s => '<button type="button" class="chat-chip">' + esc(s) + "</button>").join("") +
+    "</div>" +
+    '<form class="chat-form" id="chatForm">' +
+    '<input type="text" id="chatInput" placeholder="Pregúntame por precios, ahorro, radio…" autocomplete="off" aria-label="Escribe tu pregunta">' +
+    '<button type="submit" aria-label="Enviar la pregunta">➤</button></form>';
+  document.body.appendChild(panel);
+  burbuja.addEventListener("click", () => {
+    const abierto = panel.hidden;
+    panel.hidden = !abierto;
+    burbuja.classList.toggle("abierto", abierto);
+    if (abierto && !chatSaludoMostrado) {
+      chatSaludoMostrado = true;
+      chatAgregarMsg("bot", "¡Hola! Soy el asistente de <strong>Gasapp</strong>. Te respondo con los datos " +
+        "de la app: precios, ahorro, cercanía, afluencia, radio y tu rendimiento. Toca una sugerencia o escribe tu pregunta.");
+    }
+    if (abierto) { const inp = document.getElementById("chatInput"); if (inp) inp.focus(); }
+  });
+  panel.querySelector("#chatCerrar").addEventListener("click", () => {
+    panel.hidden = true;
+    burbuja.classList.remove("abierto");
+  });
+  panel.querySelector("#chatForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const inp = document.getElementById("chatInput");
+    chatEnviar(inp.value);
+    inp.value = "";
+  });
+  panel.querySelectorAll(".chat-chip").forEach(ch =>
+    ch.addEventListener("click", () => chatEnviar(ch.textContent)));
+}
+function chatAgregarMsg(clase, html) {
+  const cont = document.getElementById("chatMsjs");
+  if (!cont) return;
+  const div = document.createElement("div");
+  div.className = "chat-msj " + clase;
+  div.innerHTML = html;
+  cont.appendChild(div);
+  cont.scrollTop = cont.scrollHeight;
+}
+function chatEnviar(texto) {
+  const limpio = String(texto == null ? "" : texto).trim();
+  if (!limpio) return;
+  chatAgregarMsg("usuario", esc(limpio));
+  chatAgregarMsg("bot", botRespuesta(limpio));
+}
+document.addEventListener("DOMContentLoaded", chatCrear);

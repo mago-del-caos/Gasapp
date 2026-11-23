@@ -66,7 +66,7 @@
 <script>
 "use strict";
 /* ---------- Mapa GPS con Leaflet + rutas OSRM ---------- */
-let mapa = null, capaRuta = null, marcadorUsuario = null;
+let mapa = null, capaRuta = null, marcadorUsuario = null, circuloPrecision = null;
 let destino = null;   // estación elegida
 
 const params = new URLSearchParams(location.search);
@@ -140,15 +140,56 @@ function initMapa() {
       });
     });
   });
-  if (origen.etiqueta === "tu ubicación") marcarUsuario(false);
 }
-function marcarUsuario(centrar) {
+/* Marca «Estás aquí»: punto azul con anillo pulsante, distinto de los
+   marcadores de precio, por encima de ellos (zIndexOffset) y con su
+   círculo de precisión si la API de geolocalización lo proporciona. */
+function marcarUsuario(centrar, precision) {
   if (!mapa) return;
   if (marcadorUsuario) marcadorUsuario.remove();
+  if (circuloPrecision) { circuloPrecision.remove(); circuloPrecision = null; }
+  if (typeof precision === "number" && precision > 0) {
+    circuloPrecision = L.circle([origen.lat, origen.lng], {
+      radius: precision, color: "#1a73e8", weight: 1, opacity: .55,
+      fillColor: "#1a73e8", fillOpacity: .12, interactive: false
+    }).addTo(mapa);
+  }
   marcadorUsuario = L.marker([origen.lat, origen.lng], {
-    icon: L.divIcon({ className: "", html: `<div class="marcador-usuario">Tú</div>`, iconSize: null, iconAnchor: [16, 14] })
+    zIndexOffset: 1000,
+    icon: L.divIcon({
+      className: "",
+      html: '<div class="punto-usuario"><span class="punto-usuario-anillo"></span><span class="punto-usuario-centro"></span></div>',
+      iconSize: [22, 22], iconAnchor: [11, 11]
+    })
   }).addTo(mapa).bindPopup("Estás aquí");
   if (centrar) mapa.setView([origen.lat, origen.lng], 15);
+}
+/* Geolocaliza, fija el origen de la sesión y deja la marca puesta.
+   Si falla, el mapa se queda con el origen vigente (la ubicación ya
+   fijada en otra página o la referencia de Tlatelolco) y avisa. */
+function localizarUsuario() {
+  const msg = $("#mapaMsg");
+  if (!navigator.geolocation) {
+    msg.textContent = hayGPS()
+      ? "Este navegador no ofrece geolocalización; se mantiene la ubicación fijada antes en esta sesión."
+      : "Este navegador no ofrece geolocalización; el mapa se queda en Tlatelolco, CDMX como referencia.";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      fijarOrigen({ lat: pos.coords.latitude, lng: pos.coords.longitude, etiqueta: "tu ubicación" });
+      marcarUsuario(true, pos.coords.accuracy);
+      poblarSelector();
+      msg.textContent = "Ubicación detectada: estás marcado en el mapa con el punto azul y las rutas salen desde donde estás.";
+      if (destino) trazarRuta();
+    },
+    () => {
+      msg.textContent = hayGPS()
+        ? "No se pudo actualizar tu ubicación (permiso denegado o señal débil); se mantiene la fijada antes en esta sesión."
+        : "No se pudo obtener tu ubicación (permiso denegado o señal débil); el mapa se queda en Tlatelolco, CDMX como referencia. Puedes intentarlo de nuevo con el botón «Mi ubicación».";
+    },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
 }
 function elegirDestino(id, trazar) {
   const est = estacionPorId(id);
@@ -194,24 +235,24 @@ async function trazarRuta() {
 $("#selEstacion").addEventListener("change", e => elegirDestino(e.target.value, false));
 $("#btnRuta").addEventListener("click", trazarRuta);
 $("#btnMiUbicacion").addEventListener("click", () => {
-  const msg = $("#mapaMsg");
-  msg.textContent = "Buscando tu ubicación…";
-  pedirUbicacion(
-    () => {
-      msg.textContent = "Ubicación detectada: el mapa se centró en ti y las rutas salen desde donde estás.";
-      marcarUsuario(true);
-      poblarSelector();
-      if (destino) trazarRuta();
-    },
-    error => { msg.textContent = error; }
-  );
+  $("#mapaMsg").textContent = "Buscando tu ubicación…";
+  localizarUsuario();
 });
 
 /* ---------- Arranque ---------- */
 poblarSelector();
 if (typeof L !== "undefined") {
   initMapa();
+  if (hayGPS()) {
+    // Ya fijada en otra página de la app: la marca va de inmediato,
+    // sin esperar a que el GPS responda.
+    marcarUsuario(true);
+    $("#mapaMsg").textContent = "Tu ubicación ya estaba fijada en esta sesión: estás marcado con el punto azul y las rutas salen desde donde estás.";
+  }
   if (idPre && destino) trazarRuta();
+  // Y se intenta geolocalizar automáticamente para refrescar la marca
+  // (con su círculo de precisión) sin que el usuario toque nada.
+  localizarUsuario();
 } else {
   mostrarRespaldo("No se pudo cargar la librería del mapa (revisa tu conexión).");
 }

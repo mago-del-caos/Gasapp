@@ -25,6 +25,21 @@ afluencia estimada por hora y el tiempo de fila.
   con transmisión pública por internet verificada (Ibero 90.9, Radio UNAM
   96.1, W Radio 96.9, Reactor 105.7 y Radio Educación 1060), con un solo
   reproductor compartido, control de volumen y aviso de consumo de datos.
+  La radio es **persistente en toda la app**: una barra inferior fija
+  (mini-reproductor con anterior/siguiente, reproducir/pausar y detener)
+  la controla desde cualquier página y el estado se guarda en la sesión
+  para retomarla al cambiar de página; con la **Media Session API** el
+  teléfono la muestra en la notificación y la pantalla bloqueada, y sigue
+  sonando con la pantalla apagada. Si el navegador bloquea la reanudación
+  automática, la barra ofrece «Seguir escuchando» con un toque.
+- **Asistente en burbuja de chat**: botón flotante en todas las páginas que
+  abre una conversación con un bot **local, sin API ni llaves**. Responde
+  solo con los datos de la app (precios de `datos.js`, el GPS de la sesión
+  y la bitácora de rendimiento): la gasolina más barata, el precio de una
+  estación por nombre o permiso, cuánto se ahorra por carga y al mes, la
+  estación más cercana, la hora con menos gente según el modelo de
+  afluencia (estimación), las estaciones de radio (y puede ponerlas a
+  sonar: «pon Reactor») y el rendimiento promedio del conductor.
 - **App instalable (PWA)**: botón «📲 Descargar la app» en el Inicio y en el
   menú de todas las páginas. En Android/Chrome dispara el aviso de
   instalación del navegador; en iPhone/Safari muestra los pasos (Compartir →
@@ -37,7 +52,13 @@ afluencia estimada por hora y el tiempo de fila.
   Google Maps. Si el mapa o el cálculo de ruta no cargan, la página ofrece los
   enlaces directos a Google Maps.
 - **GPS**: botón «Usar mi ubicación» que recalcula las distancias reales; la
-  ubicación se recuerda entre páginas durante la sesión.
+  ubicación se recuerda entre páginas durante la sesión. El mapa intenta
+  geolocalizar automáticamente al abrirse (y usa al instante la ubicación
+  ya fijada en otra página) y señala al usuario con una marca propia —
+  **punto azul con anillo pulsante**, círculo de precisión y popup «Estás
+  aquí» — por encima de los marcadores de precio y visible también como
+  punto de partida al trazar la ruta. Si el GPS falla, el mapa se queda
+  con la referencia de Tlatelolco y lo avisa en su línea de estado.
 - **Orden** por mejor precio, cercanía o calificación de la comunidad.
 - **Calculadora de ahorro** por carga y al mes (más barata vs. más cara).
 - **Calculadora de rendimiento** (`rendimiento.html`): registra cada carga
@@ -69,7 +90,7 @@ afluencia estimada por hora y el tiempo de fila.
 | `estacion.html` | Detalle de una estación según `?id=`: precios, afluencia, ruta y opiniones. |
 | `calculadora.html` | Calculadora de ahorro: más barata vs. más cara, por carga y al mes. |
 | `rendimiento.html` | Calculadora de rendimiento por carga: odómetro y litros por carga, km/L entre cargas, promedios general y por estación (localStorage). |
-| `radio.html` | Radio en vivo: 5 estaciones de CDMX con streams públicos verificados, reproductor único y volumen. |
+| `radio.html` | Radio en vivo: 5 estaciones de CDMX con streams públicos verificados; sus tarjetas controlan el reproductor compartido de `app.js` (barra inferior persistente en toda la app). |
 | `acerca.html` | «Cómo funciona»: explicación, fuente de datos y límites honestos. |
 | `estilos.css` | Hoja de estilos compartida por todas las páginas. |
 | `datos.js` | El arreglo `ESTACIONES` (la foto de datos CNE) y su fecha. |

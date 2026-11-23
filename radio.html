@@ -89,10 +89,9 @@
   </article>
 
   <section class="panel">
-    <p class="nota-radio">📻 La transmisión es <strong>en vivo por internet</strong>, directo de la señal de cada estación: lo que suena aquí es lo mismo que suena en el radio. Al ser streaming, <strong>consume datos</strong> de tu plan (aprox. 55 MB por hora); si estás en la gasolinera, úsala con moderación o con Wi-Fi. Solo puede sonar una estación a la vez: al elegir otra, la anterior se detiene.</p>
+    <p class="nota-radio">📻 La transmisión es <strong>en vivo por internet</strong>, directo de la señal de cada estación: lo que suena aquí es lo mismo que suena en el radio. Al ser streaming, <strong>consume datos</strong> de tu plan (aprox. 55 MB por hora); si estás en la gasolinera, úsala con moderación o con Wi-Fi. Solo puede sonar una estación a la vez: al elegir otra, la anterior se detiene. La radio <strong>sigue sonando aunque cambies de página</strong> dentro de Gasapp: la controlas desde la barra inferior o desde los controles de tu teléfono.</p>
   </section>
 
-  <audio id="reproductor" preload="none"></audio>
 </main>
 
 <footer>
@@ -103,69 +102,42 @@
 <script src="app.js"></script>
 <script>
 "use strict";
-/* ---------- Radio en vivo: un solo <audio> compartido ---------- */
-const ESTACIONES_RADIO = [
-  { nombre: "Ibero 90.9", url: "https://shaincast.caster.fm:20866/listen.mp3" },
-  { nombre: "Radio UNAM 96.1", url: "https://tv.radiohosting.online:9484/stream" },
-  { nombre: "W Radio 96.9", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/W_RADIO.mp3" },
-  { nombre: "Reactor 105.7", url: "https://s2.mexside.net/8002/stream" },
-  { nombre: "Radio Educación 1060", url: "https://s2.mexside.net:8176/stream" }
-];
-const audio = document.getElementById("reproductor");
+/* ---------- Radio en vivo: las tarjetas controlan el reproductor
+   COMPARTIDO de app.js (un solo <audio> para toda la app). El estado
+   se pinta desde radioInfo(); app.js llama a radioPintarPagina()
+   cada vez que algo cambia, también al cambiar de página. ---------- */
 const estado = document.getElementById("estadoRadio");
 const btnDetener = document.getElementById("btnDetener");
+const volumen = document.getElementById("volumen");
 const botones = Array.from(document.querySelectorAll(".btn-play"));
 const tarjetas = Array.from(document.querySelectorAll(".tarjeta-radio"));
-let actual = -1;   // índice de la estación cargada (-1 = ninguna)
 
-audio.volume = parseFloat(document.getElementById("volumen").value);
-
-function pintar() {
+window.radioPintarPagina = function () {
+  const info = radioInfo();
   botones.forEach((b, i) => {
-    const suena = i === actual && !audio.paused;
+    const suena = i === info.idx && info.sonando;
     b.textContent = suena ? "⏸" : "▶";
     b.setAttribute("aria-label", (suena ? "Pausar " : "Escuchar ") + ESTACIONES_RADIO[i].nombre);
   });
-  tarjetas.forEach((t, i) => t.classList.toggle("sonando", i === actual && !audio.paused));
-  btnDetener.disabled = actual === -1;
-  if (actual === -1) {
+  tarjetas.forEach((t, i) => t.classList.toggle("sonando", i === info.idx && info.sonando));
+  btnDetener.disabled = info.idx === -1;
+  if (document.activeElement !== volumen) volumen.value = info.volumen;
+  if (info.idx === -1) {
     estado.textContent = "Elige una estación y toca ▶ para escucharla en vivo.";
-  } else if (audio.paused) {
-    estado.innerHTML = "En pausa: <strong>" + esc(ESTACIONES_RADIO[actual].nombre) + "</strong>";
+  } else if (info.error) {
+    estado.textContent = "La señal de " + ESTACIONES_RADIO[info.idx].nombre + " no respondió; inténtalo de nuevo en un momento.";
+  } else if (info.sonando) {
+    estado.innerHTML = "Sonando en vivo: <strong>" + esc(ESTACIONES_RADIO[info.idx].nombre) + "</strong>. Sigue sonando aunque cambies de página; contrólala desde la barra inferior.";
+  } else if (info.bloqueada) {
+    estado.innerHTML = "En pausa: <strong>" + esc(ESTACIONES_RADIO[info.idx].nombre) + "</strong>. Toca ▶ para seguir escuchando (el navegador no reanudó el audio automáticamente).";
   } else {
-    estado.innerHTML = "Sonando en vivo: <strong>" + esc(ESTACIONES_RADIO[actual].nombre) + "</strong>";
+    estado.innerHTML = "En pausa: <strong>" + esc(ESTACIONES_RADIO[info.idx].nombre) + "</strong>";
   }
-}
-function reproducir(i) {
-  if (i === actual) {
-    if (audio.paused) { audio.play().catch(() => {}); } else { audio.pause(); }
-    pintar();
-    return;
-  }
-  actual = i;
-  audio.src = ESTACIONES_RADIO[i].url;
-  audio.play().catch(() => {
-    estado.textContent = "No se pudo conectar con la señal de " + ESTACIONES_RADIO[i].nombre + "; inténtalo de nuevo en un momento.";
-  });
-  pintar();
-}
-botones.forEach((b, i) => b.addEventListener("click", () => reproducir(i)));
-btnDetener.addEventListener("click", () => {
-  audio.pause();
-  audio.removeAttribute("src");
-  audio.load();
-  actual = -1;
-  pintar();
-});
-document.getElementById("volumen").addEventListener("input", ev => { audio.volume = parseFloat(ev.target.value); });
-audio.addEventListener("play", pintar);
-audio.addEventListener("pause", pintar);
-audio.addEventListener("error", () => {
-  if (actual !== -1) {
-    estado.textContent = "La señal de " + ESTACIONES_RADIO[actual].nombre + " no respondió; inténtalo de nuevo en un momento.";
-  }
-}, true);
-pintar();
+};
+botones.forEach((b, i) => b.addEventListener("click", () => radioReproducir(i)));
+btnDetener.addEventListener("click", radioDetener);
+volumen.addEventListener("input", ev => radioFijarVolumen(parseFloat(ev.target.value)));
+radioPintar();
 </script>
 </body>
 </html>
