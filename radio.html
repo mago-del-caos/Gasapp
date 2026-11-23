@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio en vivo — Gasapp</title>
+<meta name="description" content="Radio en vivo en Gasapp: escucha estaciones de la Ciudad de México mientras cargas gasolina o manejas.">
+<link rel="icon" type="image/png" href="assets/logo-gasapp.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#04150f">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html" aria-label="Gasapp — ir al inicio">
+    <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
+    <div>
+      <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+      <p class="saludo">Hola · <span class="fecha-hoy"></span></p>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+    </div>
+  </a>
+  <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
+  <nav class="menu" id="menuNav" aria-label="Navegación principal">
+    <a href="index.html"><img src="assets/icono-favoritos.png" alt=""> Inicio</a>
+    <a href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Mapa</a>
+    <a href="calculadora.html"><img src="assets/icono-estadisticas.png" alt=""> Calculadora</a>
+    <a href="radio.html"><img src="assets/icono-alertas.png" alt=""> Radio</a>
+    <a href="acerca.html"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona</a>
+    <button type="button" class="btn-instalar">📲 Descargar la app</button>
+  </nav>
+</header>
+<main>
+  <div class="titulo-seccion"><img src="assets/icono-alertas.png" alt=""> Radio en vivo</div>
+
+  <section class="panel">
+    <div class="barra-player">
+      <span class="sonando-txt" id="estadoRadio">Elige una estación y toca ▶ para escucharla en vivo.</span>
+      <label>Volumen <input type="range" id="volumen" min="0" max="1" step="0.05" value="0.9" aria-label="Volumen del reproductor"></label>
+      <button type="button" id="btnDetener" disabled>■ Detener</button>
+    </div>
+  </section>
+
+  <article class="tarjeta-est tarjeta-radio" data-estacion="0">
+    <div class="radio-frec">90.9<small>FM</small></div>
+    <div class="radio-info">
+      <div class="radio-nombre">Ibero 90.9 <span class="en-vivo">EN VIVO</span></div>
+      <p class="radio-desc">La radio de la Universidad Iberoamericana: música, cultura e ideas.</p>
+    </div>
+    <button type="button" class="btn-play" data-i="0" aria-label="Escuchar Ibero 90.9">▶</button>
+  </article>
+
+  <article class="tarjeta-est tarjeta-radio" data-estacion="1">
+    <div class="radio-frec">96.1<small>FM</small></div>
+    <div class="radio-info">
+      <div class="radio-nombre">Radio UNAM <span class="en-vivo">EN VIVO</span></div>
+      <p class="radio-desc">La radio de la UNAM: cultura, música clásica y ciencia.</p>
+    </div>
+    <button type="button" class="btn-play" data-i="1" aria-label="Escuchar Radio UNAM">▶</button>
+  </article>
+
+  <article class="tarjeta-est tarjeta-radio" data-estacion="2">
+    <div class="radio-frec">96.9<small>FM</small></div>
+    <div class="radio-info">
+      <div class="radio-nombre">W Radio <span class="en-vivo">EN VIVO</span></div>
+      <p class="radio-desc">Noticias, análisis y conversación todo el día.</p>
+    </div>
+    <button type="button" class="btn-play" data-i="2" aria-label="Escuchar W Radio">▶</button>
+  </article>
+
+  <article class="tarjeta-est tarjeta-radio" data-estacion="3">
+    <div class="radio-frec">105.7<small>FM</small></div>
+    <div class="radio-info">
+      <div class="radio-nombre">Reactor 105.7 <span class="en-vivo">EN VIVO</span></div>
+      <p class="radio-desc">La estación del IMER: rock, indie y música nueva.</p>
+    </div>
+    <button type="button" class="btn-play" data-i="3" aria-label="Escuchar Reactor 105.7">▶</button>
+  </article>
+
+  <article class="tarjeta-est tarjeta-radio" data-estacion="4">
+    <div class="radio-frec">1060<small>AM</small></div>
+    <div class="radio-info">
+      <div class="radio-nombre">Radio Educación <span class="en-vivo">EN VIVO</span></div>
+      <p class="radio-desc">Radio pública cultural: música, noticias y tradición.</p>
+    </div>
+    <button type="button" class="btn-play" data-i="4" aria-label="Escuchar Radio Educación">▶</button>
+  </article>
+
+  <section class="panel">
+    <p class="nota-radio">📻 La transmisión es <strong>en vivo por internet</strong>, directo de la señal de cada estación: lo que suena aquí es lo mismo que suena en el radio. Al ser streaming, <strong>consume datos</strong> de tu plan (aprox. 55 MB por hora); si estás en la gasolinera, úsala con moderación o con Wi-Fi. Solo puede sonar una estación a la vez: al elegir otra, la anterior se detiene.</p>
+  </section>
+
+  <audio id="reproductor" preload="none"></audio>
+</main>
+
+<footer>
+  <p><img src="assets/icono-ajustes.png" alt=""> <strong>Fuente de precios:</strong> Comisión Nacional de Energía (CNE), listado oficial de precios reportados por los permisionarios (XML público, actualización diaria 18:00 h). Gasapp muestra una foto de esos datos; verifica siempre el precio en la bomba.</p>
+  <p>Las señales de radio son transmisiones públicas en vivo de cada estación; Gasapp solo las enlaza, no las graba ni las retransmite desde sus servidores.</p>
+</footer>
+<script src="datos.js"></script>
+<script src="app.js"></script>
+<script>
+"use strict";
+/* ---------- Radio en vivo: un solo <audio> compartido ---------- */
+const ESTACIONES_RADIO = [
+  { nombre: "Ibero 90.9", url: "https://shaincast.caster.fm:20866/listen.mp3" },
+  { nombre: "Radio UNAM 96.1", url: "https://tv.radiohosting.online:9484/stream" },
+  { nombre: "W Radio 96.9", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/W_RADIO.mp3" },
+  { nombre: "Reactor 105.7", url: "https://s2.mexside.net/8002/stream" },
+  { nombre: "Radio Educación 1060", url: "https://s2.mexside.net:8176/stream" }
+];
+const audio = document.getElementById("reproductor");
+const estado = document.getElementById("estadoRadio");
+const btnDetener = document.getElementById("btnDetener");
+const botones = Array.from(document.querySelectorAll(".btn-play"));
+const tarjetas = Array.from(document.querySelectorAll(".tarjeta-radio"));
+let actual = -1;   // índice de la estación cargada (-1 = ninguna)
+
+audio.volume = parseFloat(document.getElementById("volumen").value);
+
+function pintar() {
+  botones.forEach((b, i) => {
+    const suena = i === actual && !audio.paused;
+    b.textContent = suena ? "⏸" : "▶";
+    b.setAttribute("aria-label", (suena ? "Pausar " : "Escuchar ") + ESTACIONES_RADIO[i].nombre);
+  });
+  tarjetas.forEach((t, i) => t.classList.toggle("sonando", i === actual && !audio.paused));
+  btnDetener.disabled = actual === -1;
+  if (actual === -1) {
+    estado.textContent = "Elige una estación y toca ▶ para escucharla en vivo.";
+  } else if (audio.paused) {
+    estado.innerHTML = "En pausa: <strong>" + esc(ESTACIONES_RADIO[actual].nombre) + "</strong>";
+  } else {
+    estado.innerHTML = "Sonando en vivo: <strong>" + esc(ESTACIONES_RADIO[actual].nombre) + "</strong>";
+  }
+}
+function reproducir(i) {
+  if (i === actual) {
+    if (audio.paused) { audio.play().catch(() => {}); } else { audio.pause(); }
+    pintar();
+    return;
+  }
+  actual = i;
+  audio.src = ESTACIONES_RADIO[i].url;
+  audio.play().catch(() => {
+    estado.textContent = "No se pudo conectar con la señal de " + ESTACIONES_RADIO[i].nombre + "; inténtalo de nuevo en un momento.";
+  });
+  pintar();
+}
+botones.forEach((b, i) => b.addEventListener("click", () => reproducir(i)));
+btnDetener.addEventListener("click", () => {
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+  actual = -1;
+  pintar();
+});
+document.getElementById("volumen").addEventListener("input", ev => { audio.volume = parseFloat(ev.target.value); });
+audio.addEventListener("play", pintar);
+audio.addEventListener("pause", pintar);
+audio.addEventListener("error", () => {
+  if (actual !== -1) {
+    estado.textContent = "La señal de " + ESTACIONES_RADIO[actual].nombre + " no respondió; inténtalo de nuevo en un momento.";
+  }
+}, true);
+pintar();
+</script>
+</body>
+</html>

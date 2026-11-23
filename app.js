@@ -272,6 +272,16 @@ function initInstalar() {
 }
 document.addEventListener("DOMContentLoaded", initInstalar);
 
+/* ---------- Saludo con fecha (encabezado compartido) ---------- */
+function initSaludo() {
+  const hoy = new Date().toLocaleDateString("es-MX", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric"
+  });
+  const fecha = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+  document.querySelectorAll(".fecha-hoy").forEach(el => { el.textContent = fecha; });
+}
+document.addEventListener("DOMContentLoaded", initSaludo);
+
 /* ---------- Menú desplegable compartido ---------- */
 function initMenu() {
   const btn = document.getElementById("btnMenu");

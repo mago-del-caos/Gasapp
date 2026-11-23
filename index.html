@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="assets/logo-gasapp.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#f5f5f7">
+<meta name="theme-color" content="#04150f">
 <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
@@ -17,6 +17,7 @@
     <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
     <div>
       <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+      <p class="saludo">Hola · <span class="fecha-hoy"></span></p>
       <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
     </div>
   </a>
@@ -25,6 +26,7 @@
     <a href="index.html"><img src="assets/icono-favoritos.png" alt=""> Inicio</a>
     <a href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Mapa</a>
     <a href="calculadora.html"><img src="assets/icono-estadisticas.png" alt=""> Calculadora</a>
+    <a href="radio.html"><img src="assets/icono-alertas.png" alt=""> Radio</a>
     <a href="acerca.html"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona</a>
     <button type="button" class="btn-instalar">📲 Descargar la app</button>
   </nav>
@@ -32,12 +34,65 @@
 <main>
   <div class="aviso-datos" id="avisoDatos"></div>
 
+  <section class="heroe" aria-label="Precio y ahorro de hoy">
+    <div class="heroe-titulo">Precio y ahorro hoy</div>
+    <div class="medidores">
+      <div class="medidor">
+        <svg viewBox="0 0 84 84" role="img" aria-label="Magna más barata de la zona">
+          <circle class="anillo-fondo" cx="42" cy="42" r="34"></circle>
+          <circle class="anillo-prog" id="ringMagna" cx="42" cy="42" r="34"></circle>
+          <text class="med-num" id="medMagna" x="42" y="47" text-anchor="middle">—</text>
+        </svg>
+        <div class="med-etiqueta">Magna más barata ($/L)</div>
+      </div>
+      <div class="medidor">
+        <svg viewBox="0 0 84 84" role="img" aria-label="Premium más barata de la zona">
+          <circle class="anillo-fondo" cx="42" cy="42" r="34"></circle>
+          <circle class="anillo-prog" id="ringPremium" cx="42" cy="42" r="34"></circle>
+          <text class="med-num" id="medPremium" x="42" y="47" text-anchor="middle">—</text>
+        </svg>
+        <div class="med-etiqueta">Premium más barata ($/L)</div>
+      </div>
+      <div class="medidor">
+        <svg viewBox="0 0 84 84" role="img" aria-label="Ahorro estimado por carga de 40 litros">
+          <circle class="anillo-fondo" cx="42" cy="42" r="34"></circle>
+          <circle class="anillo-prog oro" id="ringAhorro" cx="42" cy="42" r="34"></circle>
+          <text class="med-num" id="medAhorro" x="42" y="47" text-anchor="middle">—</text>
+        </svg>
+        <div class="med-etiqueta">Ahorro por carga de 40 L</div>
+      </div>
+      <div class="medidor">
+        <svg viewBox="0 0 84 84" role="img" aria-label="Estaciones en la zona">
+          <circle class="anillo-fondo" cx="42" cy="42" r="34"></circle>
+          <circle class="anillo-prog" id="ringEstaciones" cx="42" cy="42" r="34"></circle>
+          <text class="med-num" id="medEstaciones" x="42" y="47" text-anchor="middle">—</text>
+        </svg>
+        <div class="med-etiqueta">Estaciones en la zona</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="titulo-seccion">Servicios</div>
+  <section class="servicios" aria-label="Servicios de Gasapp">
+    <a class="servicio" href="mapa.html"><span class="serv-ico"><img src="assets/icono-mapa.png" alt=""></span><span class="serv-etq">Mapa</span></a>
+    <a class="servicio" href="calculadora.html"><span class="serv-ico"><img src="assets/icono-estadisticas.png" alt=""></span><span class="serv-etq">Calculadora</span></a>
+    <a class="servicio" href="radio.html"><span class="serv-ico"><img src="assets/icono-alertas.png" alt=""></span><span class="serv-etq">Radio</span></a>
+    <a class="servicio" href="#lista"><span class="serv-ico"><img src="assets/icono-buscar.png" alt=""></span><span class="serv-etq">Estaciones</span></a>
+    <a class="servicio" href="acerca.html"><span class="serv-ico"><img src="assets/icono-ajustes.png" alt=""></span><span class="serv-etq">Cómo funciona</span></a>
+  </section>
+
+  <section class="tarjeta-accion">
+    <p class="pregunta">¿Buscas la gasolina más barata cerca de ti?</p>
+    <div class="acciones">
+      <button id="btnGps" class="btn-pildora btn-turquesa"><img src="assets/icono-mapa.png" alt=""> Usar mi ubicación (GPS)</button>
+      <a class="btn-pildora btn-contorno" href="mapa.html">Ver el mapa y rutas</a>
+    </div>
+    <span class="gps-msg" id="gpsMsg"></span>
+  </section>
+
   <section class="panel">
     <div class="fila">
-      <button id="btnGps" class="destacado"><img src="assets/icono-mapa.png" alt=""> Usar mi ubicación (GPS)</button>
       <button type="button" class="btn-instalar">📲 Descargar la app</button>
-      <a class="boton" href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Ver el mapa y rutas</a>
-      <span id="gpsMsg" style="font-size:.88rem; color:var(--texto2);"></span>
     </div>
     <div class="fila">
       <span class="etiqueta">Combustible para ordenar:</span>
@@ -76,6 +131,25 @@ let combustible = "regular";
 let orden = "precio";
 
 pintarAvisoDatos(document.getElementById("avisoDatos"));
+
+/* ---------- Héroe: medidores con los datos reales de la zona ---------- */
+(function pintarHeroe() {
+  const CIRC = 2 * Math.PI * 34;
+  const conPrecio = f => ESTACIONES.map(e => precioDe(e, f)).filter(p => p !== null);
+  const reg = conPrecio("regular"), pre = conPrecio("premium");
+  const magnaMin = Math.min(...reg), magnaMax = Math.max(...reg);
+  const premMin = Math.min(...pre), premMax = Math.max(...pre);
+  const ahorro40 = (magnaMax - magnaMin) * 40;
+  const poner = (idTxt, idRing, texto, frac) => {
+    document.getElementById(idTxt).textContent = texto;
+    document.getElementById(idRing).style.strokeDashoffset =
+      String(CIRC * (1 - Math.max(0, Math.min(1, frac))));
+  };
+  poner("medMagna", "ringMagna", dinero(magnaMin), magnaMin / magnaMax);
+  poner("medPremium", "ringPremium", dinero(premMin), premMin / premMax);
+  poner("medAhorro", "ringAhorro", dinero(ahorro40), Math.min(ahorro40 / 150, 1));
+  poner("medEstaciones", "ringEstaciones", String(ESTACIONES.length), ESTACIONES.length / 30);
+})();
 
 function listaOrdenada() {
   const q = normalizar($("#buscar").value || "");
