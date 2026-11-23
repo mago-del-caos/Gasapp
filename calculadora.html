@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de ahorro — Gasapp</title>
+<meta name="description" content="Calcula cuánto ahorras cargando en la gasolinera más barata de la zona en vez de la más cara, por carga y al mes.">
+<link rel="icon" type="image/png" href="assets/logo-gasapp.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html" aria-label="Gasapp — ir al inicio">
+    <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
+    <div>
+      <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+    </div>
+  </a>
+  <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
+  <nav class="menu" id="menuNav" aria-label="Navegación principal">
+    <a href="index.html"><img src="assets/icono-favoritos.png" alt=""> Inicio</a>
+    <a href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Mapa</a>
+    <a href="calculadora.html"><img src="assets/icono-estadisticas.png" alt=""> Calculadora</a>
+    <a href="acerca.html"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona</a>
+    <button type="button" class="btn-instalar">📲 Descargar la app</button>
+  </nav>
+</header>
+<main>
+  <div class="aviso-datos" id="avisoDatos"></div>
+
+  <div class="titulo-seccion"><img src="assets/icono-estadisticas.png" alt=""> Calculadora de ahorro</div>
+  <section class="panel">
+    <div class="fila">
+      <span class="etiqueta">Combustible:</span>
+      <button data-fuel="regular" class="fuel activo">Magna</button>
+      <button data-fuel="premium" class="fuel">Premium</button>
+      <button data-fuel="diesel" class="fuel">Diésel</button>
+    </div>
+    <div class="calc-grid" style="margin-top:14px;">
+      <label>Litros por carga
+        <input type="number" id="calcLitros" value="40" min="1" max="200">
+      </label>
+      <label>Cargas al mes
+        <input type="number" id="calcCargas" value="4" min="1" max="31">
+      </label>
+    </div>
+    <div class="calc-res" id="calcRes"></div>
+    <div class="fila" style="margin-top:14px;">
+      <a class="boton" href="index.html"><img src="assets/icono-favoritos.png" alt=""> Ver la lista de estaciones</a>
+      <a class="boton" href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Verlas en el mapa</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><img src="assets/icono-ajustes.png" alt=""> <strong>Fuente de precios:</strong> Comisión Nacional de Energía (CNE), listado oficial de precios reportados por los permisionarios (XML público, actualización diaria 18:00 h). Gasapp muestra una foto de esos datos; verifica siempre el precio en la bomba.</p>
+  <p>Las calificaciones y comentarios son de la comunidad. Si la conexión con el servidor de comentarios no está activa, tus opiniones se guardan solo en este dispositivo (modo local).</p>
+</footer>
+<script src="datos.js"></script>
+<script src="app.js"></script>
+<script>
+"use strict";
+/* ---------- Calculadora de ahorro: más barata vs. más cara de la zona ---------- */
+let combustible = "regular";
+
+pintarAvisoDatos(document.getElementById("avisoDatos"));
+
+function calcularAhorro() {
+  const arr = ESTACIONES.filter(e => precioDe(e, combustible) !== null);
+  const litros = Math.max(1, parseFloat($("#calcLitros").value) || 40);
+  const cargas = Math.max(1, parseFloat($("#calcCargas").value) || 4);
+  if (!arr.length) { $("#calcRes").textContent = "Sin estaciones con precio de " + NOMBRES_FUEL[combustible] + " en la lista."; return; }
+  const precios = arr.map(e => precioDe(e, combustible));
+  const min = Math.min(...precios), max = Math.max(...precios);
+  const barata = arr[precios.indexOf(min)], cara = arr[precios.indexOf(max)];
+  const porCarga = (max - min) * litros, alMes = porCarga * cargas;
+  $("#calcRes").innerHTML =
+    `Con <strong>${NOMBRES_FUEL[combustible]}</strong>: la más barata es <strong><a href="estacion.html?id=${barata.id}" style="color:var(--verde);">${esc(barata.nombre)}</a></strong> a ${dinero(min)}/L ` +
+    `y la más cara <strong><a href="estacion.html?id=${cara.id}" style="color:var(--verde);">${esc(cara.nombre)}</a></strong> a ${dinero(max)}/L.<br>` +
+    `Llenar ${litros} L cuesta ${dinero(min * litros)} contra ${dinero(max * litros)}: ` +
+    `ahorras <strong>${dinero(porCarga)} por carga</strong> y <strong>${dinero(alMes)} al mes</strong> con ${cargas} cargas.`;
+}
+
+document.querySelectorAll(".fuel").forEach(b => b.addEventListener("click", () => {
+  combustible = b.dataset.fuel;
+  document.querySelectorAll(".fuel").forEach(x => x.classList.toggle("activo", x === b));
+  calcularAhorro();
+}));
+$("#calcLitros").addEventListener("input", calcularAhorro);
+$("#calcCargas").addEventListener("input", calcularAhorro);
+calcularAhorro();
+</script>
+</body>
+</html>

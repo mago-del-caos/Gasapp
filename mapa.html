@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa y rutas — Gasapp</title>
+<meta name="description" content="Mapa GPS de Gasapp: gasolineras cercanas con precios y la ruta por calles hasta la que elijas.">
+<link rel="icon" type="image/png" href="assets/logo-gasapp.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="stylesheet" href="estilos.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html" aria-label="Gasapp — ir al inicio">
+    <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
+    <div>
+      <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+    </div>
+  </a>
+  <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
+  <nav class="menu" id="menuNav" aria-label="Navegación principal">
+    <a href="index.html"><img src="assets/icono-favoritos.png" alt=""> Inicio</a>
+    <a href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Mapa</a>
+    <a href="calculadora.html"><img src="assets/icono-estadisticas.png" alt=""> Calculadora</a>
+    <a href="acerca.html"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona</a>
+    <button type="button" class="btn-instalar">📲 Descargar la app</button>
+  </nav>
+</header>
+<main>
+  <div class="titulo-seccion"><img src="assets/icono-mapa.png" alt=""> Mapa GPS y rutas</div>
+
+  <section class="panel">
+    <div class="fila">
+      <button id="btnMiUbicacion" class="destacado"><img src="assets/icono-mapa.png" alt=""> Mi ubicación</button>
+      <span id="mapaMsg" style="font-size:.88rem; color:var(--texto2);">El mapa arranca en Tlatelolco, CDMX. Toca «Mi ubicación» para centrarlo en ti.</span>
+    </div>
+    <div class="fila">
+      <span class="etiqueta">Ir a esta estación:</span>
+      <select id="selEstacion" aria-label="Elegir estación de destino"></select>
+    </div>
+    <div class="fila">
+      <button id="btnRuta" class="destacado"><img src="assets/icono-mapa.png" alt=""> Trazar ruta</button>
+      <a class="boton" id="btnGoogle" href="#" target="_blank" rel="noopener"><img src="assets/icono-mapa.png" alt=""> Abrir en Google Maps</a>
+    </div>
+    <div class="ruta-info" id="rutaInfo" style="margin-top:12px;"></div>
+  </section>
+
+  <div id="mapa" role="application" aria-label="Mapa de gasolineras"></div>
+  <div id="mapaRespaldo" style="margin-top:14px;"></div>
+</main>
+
+<footer>
+  <p><img src="assets/icono-ajustes.png" alt=""> <strong>Fuente de precios:</strong> Comisión Nacional de Energía (CNE), listado oficial de precios reportados por los permisionarios (XML público, actualización diaria 18:00 h). Gasapp muestra una foto de esos datos; verifica siempre el precio en la bomba.</p>
+  <p>Mapa © OpenStreetMap y colaboradores · Rutas por calles calculadas con OSRM. Si el mapa o el cálculo de ruta no cargan, usa el botón «Abrir en Google Maps».</p>
+</footer>
+<script src="datos.js"></script>
+<script src="app.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+/* ---------- Mapa GPS con Leaflet + rutas OSRM ---------- */
+let mapa = null, capaRuta = null, marcadorUsuario = null;
+let destino = null;   // estación elegida
+
+const params = new URLSearchParams(location.search);
+const idPre = params.get("estacion") || params.get("id");
+
+function poblarSelector() {
+  const sel = $("#selEstacion");
+  const ordenadas = ESTACIONES.map(e => ({ ...e, dist: distanciaKm(origen.lat, origen.lng, e.lat, e.lng) }))
+    .sort((a, b) => a.dist - b.dist);
+  sel.innerHTML = ordenadas.map(e => {
+    const p = precioDe(e, "regular");
+    return `<option value="${e.id}">${esc(e.nombre)} — ${p !== null ? "Magna " + dinero(p) : "sin precio Magna"} · ${e.dist.toFixed(1)} km</option>`;
+  }).join("");
+  const pre = idPre && estacionPorId(idPre) ? idPre : ordenadas[0].id;
+  sel.value = pre;
+  destino = estacionPorId(pre);
+  actualizarBotonGoogle();
+}
+function actualizarBotonGoogle() {
+  if (destino) $("#btnGoogle").href = enlaceGoogleMaps(destino);
+}
+function infoRuta(html) { $("#rutaInfo").innerHTML = html; }
+
+function mostrarRespaldo(motivo) {
+  // Sin Leaflet (CDN caído o sin red): la página sigue usable con enlaces directos.
+  $("#mapa").style.display = "none";
+  $("#mapaRespaldo").innerHTML = `
+    <section class="panel">
+      <div class="titulo-seccion"><img src="assets/icono-mapa.png" alt=""> El mapa no pudo cargar</div>
+      <p style="font-size:.92rem; line-height:1.55;">${esc(motivo)} Puedes abrir la ruta a cada estación directamente en Google Maps:</p>
+      <div class="pasos" style="margin-top:10px;">
+        ${ESTACIONES.map(e => `<div class="paso"><div><strong>${esc(e.nombre)}</strong>
+          <span>Magna ${precioDe(e, "regular") !== null ? dinero(precioDe(e, "regular")) : "—"} ·
+          <a href="${enlaceGoogleMaps(e)}" target="_blank" rel="noopener" style="color:var(--verde); font-weight:600;">Cómo llegar</a> ·
+          <a href="estacion.html?id=${e.id}" style="color:var(--verde); font-weight:600;">Detalle</a></span></div></div>`).join("")}
+      </div>
+    </section>`;
+}
+
+function iconoPrecio(est) {
+  const p = precioDe(est, "regular");
+  return L.divIcon({
+    className: "",
+    html: `<div class="marcador-precio${esMejorPrecio(est) ? " mejor" : ""}">${p !== null ? dinero(p) : "—"}</div>`,
+    iconSize: null, iconAnchor: [24, 14]
+  });
+}
+function popupEstacion(est) {
+  const pR = precioDe(est, "regular"), pP = precioDe(est, "premium");
+  return `<div class="pop-nombre">${esc(est.nombre)}</div>
+    Magna <span class="pop-precio">${pR !== null ? dinero(pR) : "—"}</span> · Premium <span class="pop-precio">${pP !== null ? dinero(pP) : "—"}</span><br>
+    <a href="#" data-ruta="${est.id}">🧭 Trazar ruta hasta aquí</a> ·
+    <a href="estacion.html?id=${est.id}">Detalle y opiniones</a>`;
+}
+function initMapa() {
+  mapa = L.map("mapa").setView([origen.lat, origen.lng], 14);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap y colaboradores"
+  }).addTo(mapa);
+  ESTACIONES.forEach(est => {
+    const m = L.marker([est.lat, est.lng], { icon: iconoPrecio(est) }).addTo(mapa);
+    m.bindPopup(popupEstacion(est));
+    m.on("click", () => { elegirDestino(est.id, false); });
+    m.on("popupopen", ev => {
+      const enlace = ev.popup.getElement().querySelector("[data-ruta]");
+      if (enlace) enlace.addEventListener("click", e2 => {
+        e2.preventDefault();
+        elegirDestino(est.id, true);
+        mapa.closePopup();
+      });
+    });
+  });
+  if (origen.etiqueta === "tu ubicación") marcarUsuario(false);
+}
+function marcarUsuario(centrar) {
+  if (!mapa) return;
+  if (marcadorUsuario) marcadorUsuario.remove();
+  marcadorUsuario = L.marker([origen.lat, origen.lng], {
+    icon: L.divIcon({ className: "", html: `<div class="marcador-usuario">Tú</div>`, iconSize: null, iconAnchor: [16, 14] })
+  }).addTo(mapa).bindPopup("Estás aquí");
+  if (centrar) mapa.setView([origen.lat, origen.lng], 15);
+}
+function elegirDestino(id, trazar) {
+  const est = estacionPorId(id);
+  if (!est) return;
+  destino = est;
+  $("#selEstacion").value = id;
+  actualizarBotonGoogle();
+  if (trazar) trazarRuta();
+}
+async function trazarRuta() {
+  if (!destino) return;
+  const est = destino;
+  infoRuta(`Calculando la ruta por calles hasta <strong>${esc(est.nombre)}</strong>…`);
+  const url = "https://router.project-osrm.org/route/v1/driving/" +
+    origen.lng + "," + origen.lat + ";" + est.lng + "," + est.lat +
+    "?overview=full&geometries=geojson";
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("OSRM " + r.status);
+    const data = await r.json();
+    if (!data.routes || !data.routes.length) throw new Error("Sin ruta");
+    const ruta = data.routes[0];
+    const km = ruta.distance / 1000;
+    const min = Math.round(ruta.duration / 60);
+    if (mapa && typeof L !== "undefined") {
+      if (capaRuta) capaRuta.remove();
+      const coords = ruta.geometry.coordinates.map(c => [c[1], c[0]]);
+      capaRuta = L.polyline(coords, { color: "#0a6c37", weight: 5, opacity: .85 }).addTo(mapa);
+      mapa.fitBounds(capaRuta.getBounds(), { padding: [30, 30] });
+    }
+    infoRuta(`Ruta por calles hasta <strong>${esc(est.nombre)}</strong>: <strong>${km.toFixed(1)} km</strong> por carretera, ` +
+      `tiempo estimado <strong>${min} min</strong> manejando (desde ${esc(origen.etiqueta)}). ` +
+      `En línea recta son ${distanciaKm(origen.lat, origen.lng, est.lat, est.lng).toFixed(1)} km.`);
+  } catch (e) {
+    infoRuta(`No se pudo calcular la ruta por calles en este momento. ` +
+      `La distancia en línea recta hasta <strong>${esc(est.nombre)}</strong> es ` +
+      `<strong>${distanciaKm(origen.lat, origen.lng, est.lat, est.lng).toFixed(1)} km</strong>; ` +
+      `usa el botón «Abrir en Google Maps» para navegar.`);
+  }
+}
+
+/* ---------- Controles ---------- */
+$("#selEstacion").addEventListener("change", e => elegirDestino(e.target.value, false));
+$("#btnRuta").addEventListener("click", trazarRuta);
+$("#btnMiUbicacion").addEventListener("click", () => {
+  const msg = $("#mapaMsg");
+  msg.textContent = "Buscando tu ubicación…";
+  pedirUbicacion(
+    () => {
+      msg.textContent = "Ubicación detectada: el mapa se centró en ti y las rutas salen desde donde estás.";
+      marcarUsuario(true);
+      poblarSelector();
+      if (destino) trazarRuta();
+    },
+    error => { msg.textContent = error; }
+  );
+});
+
+/* ---------- Arranque ---------- */
+poblarSelector();
+if (typeof L !== "undefined") {
+  initMapa();
+  if (idPre && destino) trazarRuta();
+} else {
+  mostrarRespaldo("No se pudo cargar la librería del mapa (revisa tu conexión).");
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detalle de estación — Gasapp</title>
+<meta name="description" content="Detalle de una gasolinera en Gasapp: precios, afluencia estimada, tiempo de fila y opiniones de la comunidad.">
+<link rel="icon" type="image/png" href="assets/logo-gasapp.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html" aria-label="Gasapp — ir al inicio">
+    <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
+    <div>
+      <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+    </div>
+  </a>
+  <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
+  <nav class="menu" id="menuNav" aria-label="Navegación principal">
+    <a href="index.html"><img src="assets/icono-favoritos.png" alt=""> Inicio</a>
+    <a href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Mapa</a>
+    <a href="calculadora.html"><img src="assets/icono-estadisticas.png" alt=""> Calculadora</a>
+    <a href="acerca.html"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona</a>
+    <button type="button" class="btn-instalar">📲 Descargar la app</button>
+  </nav>
+</header>
+<main>
+  <p style="margin-bottom:14px;"><a href="index.html" style="color:var(--verde); font-weight:600;">← Volver a la lista de estaciones</a></p>
+  <div id="contenido"><p style="color:var(--texto2);">Cargando la estación…</p></div>
+</main>
+
+<footer>
+  <p><img src="assets/icono-ajustes.png" alt=""> <strong>Fuente de precios:</strong> Comisión Nacional de Energía (CNE), listado oficial de precios reportados por los permisionarios (XML público, actualización diaria 18:00 h). Gasapp muestra una foto de esos datos; verifica siempre el precio en la bomba.</p>
+  <p>Las calificaciones y comentarios son de la comunidad. Si la conexión con el servidor de comentarios no está activa, tus opiniones se guardan solo en este dispositivo (modo local).</p>
+</footer>
+<script src="datos.js"></script>
+<script src="app.js"></script>
+<script>
+"use strict";
+/* ---------- Detalle de una estación (?id=) ---------- */
+const params = new URLSearchParams(location.search);
+const est = estacionPorId(params.get("id") || "");
+
+function mostrarNoEncontrada() {
+  document.title = "Estación no encontrada — Gasapp";
+  $("#contenido").innerHTML = `
+    <section class="panel detalle-pag">
+      <h2>No encontramos esa estación</h2>
+      <p style="margin-top:8px; line-height:1.55;">El enlace no trae una estación válida de la zona de Tlatelolco.
+      Vuelve a la <a href="index.html" style="color:var(--verde); font-weight:600;">lista de estaciones</a>
+      o búscala en el <a href="mapa.html" style="color:var(--verde); font-weight:600;">mapa</a>.</p>
+    </section>`;
+}
+
+async function pintarComentarios(id) {
+  const { lista, fuente } = await cargarComentarios(id);
+  resumenes[id] = resumir(lista);
+  const r = resumenes[id];
+  $("#resumenDet").innerHTML = r
+    ? `<span class="calif">★ ${((r.promA + r.promL) / 2).toFixed(1)} <small>· Atención ${r.promA.toFixed(1)} · Litros completos ${r.promL.toFixed(1)} · ${r.n} opinión(es)${fuente === "local" ? " · guardadas en este dispositivo" : ""}</small></span>`
+    : `<span class="sin-calif">Todavía no hay opiniones de esta estación.</span>`;
+  $("#listaComentarios").innerHTML = lista.length ? lista.map(c => `
+    <div class="comentario">
+      <span class="quien">${esc(c.nombre || "Anónimo")}</span>
+      <span class="cuando">· ${esc((c.creado_en || c.fecha || "").toString().slice(0, 10))}</span><br>
+      <span class="calif">Atención ★${c.atencion} · Litros ★${c.litros}</span>
+      <p>${esc(c.texto)}</p>
+    </div>`).join("") : "";
+}
+
+async function publicarOpinion(ev) {
+  ev.preventDefault();
+  const aviso = $("#opAviso");
+  aviso.className = "aviso"; aviso.textContent = "";
+  const atencion = +($("#opAtencion").dataset.valor || 0);
+  const litros = +($("#opLitros").dataset.valor || 0);
+  const texto = $("#opTexto").value.trim();
+  const nombre = $("#opNombre").value.trim();
+  if (!atencion || !litros) { aviso.className = "aviso error"; aviso.textContent = "Califica la atención y los litros con las estrellas."; return; }
+  if (texto.length < 3) { aviso.className = "aviso error"; aviso.textContent = "Escribe un comentario un poco más completo."; return; }
+  if (contieneGroserias(texto) || (nombre && contieneGroserias(nombre))) {
+    aviso.className = "aviso error";
+    aviso.textContent = "Tu comentario contiene groserías y no se puede publicar. Cuéntalo con otras palabras, por favor.";
+    return;
+  }
+  const c = { nombre: nombre || "Anónimo", atencion, litros, texto, fecha: new Date().toISOString() };
+  const res = await enviarComentario(est.id, c);
+  if (!res.ok) {
+    aviso.className = "aviso error";
+    aviso.textContent = res.error || "No se pudo publicar. Inténtalo de nuevo.";
+    return;
+  }
+  aviso.className = "aviso ok";
+  aviso.textContent = res.fuente === "api"
+    ? "¡Gracias! Tu opinión quedó registrada para toda la comunidad."
+    : "¡Gracias! Tu opinión se guardó en este dispositivo (modo local).";
+  $("#opTexto").value = "";
+  await pintarComentarios(est.id);
+}
+
+function pintarDetalle() {
+  document.title = est.nombre + " — Gasapp";
+  const dist = distanciaKm(origen.lat, origen.lng, est.lat, est.lng);
+  const perfil = perfilAfluencia(est.id);
+  const hora = new Date().getHours();
+  const barras = perfil.map((v, h) =>
+    `<div class="barra${v >= 70 ? " pico" : ""}${h === hora ? " ahora" : ""}" style="height:${Math.max(5, v)}%" title="${h}:00 — ${v}%"></div>`).join("");
+  $("#contenido").innerHTML = `
+    <section class="panel detalle-pag">
+      <div class="est-top">
+        <h2>${esc(est.nombre)}</h2>
+        ${esMejorPrecio(est) ? `<span class="insignia">★ MEJOR PRECIO</span>` : ""}
+      </div>
+      <p style="color:var(--texto2); font-size:.88rem; margin-top:4px;">
+        Permiso CNE ${esc(est.permiso)} · ${est.lat.toFixed(5)}, ${est.lng.toFixed(5)} · a ${dist.toFixed(1)} km de ${esc(origen.etiqueta)}
+      </p>
+      <div class="precios">
+        ${bloquePrecio(est, "regular", null)}${bloquePrecio(est, "premium", null)}${bloquePrecio(est, "diesel", null)}
+      </div>
+      <div class="est-acciones" style="margin-top:16px;">
+        <a class="boton destacado" href="mapa.html?estacion=${est.id}"><img src="assets/icono-mapa.png" alt=""> Cómo llegar: ruta en el mapa</a>
+        <a class="boton" href="${enlaceGoogleMaps(est)}" target="_blank" rel="noopener"><img src="assets/icono-mapa.png" alt=""> Abrir en Google Maps</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="titulo-seccion" style="margin-top:0;"><img src="assets/icono-tiempo.png" alt=""> Afluencia estimada por hora</div>
+      <div class="afluencia">${barras}</div>
+      <div class="horas"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span></div>
+      <p style="font-size:.92rem; margin-top:7px;">Ahora (${hora}:00) la afluencia estimada es <strong>${perfil[hora]}%</strong>:
+        tiempo de fila aproximado <strong>${filaEstimada(perfil[hora])} min</strong>. Estimación de Gasapp, no medición en vivo.</p>
+    </section>
+
+    <section class="panel">
+      <div class="titulo-seccion" style="margin-top:0;"><img src="assets/icono-comunidad.png" alt=""> Opiniones de la comunidad</div>
+      <div id="resumenDet"></div>
+      <div id="listaComentarios"><p style="color:var(--texto2);">Cargando…</p></div>
+      <div class="titulo-seccion"><img src="assets/icono-resenas.png" alt=""> Deja tu opinión</div>
+      <form id="formOpinion">
+        <div class="campo">
+          <label>Tu nombre (opcional)</label>
+          <input type="text" id="opNombre" maxlength="60" placeholder="Ej. Vecino de Tlatelolco">
+        </div>
+        <div class="campo">
+          <label>Atención del personal</label>
+          <span class="estrellas" id="opAtencion"></span>
+        </div>
+        <div class="campo">
+          <label>Litros completos (¿te cargaron lo que pagaste?)</label>
+          <span class="estrellas" id="opLitros"></span>
+        </div>
+        <div class="campo">
+          <label>Tu comentario</label>
+          <textarea id="opTexto" maxlength="500" placeholder="Cuénta cómo te fue: atención, litros, fila, servicios…"></textarea>
+        </div>
+        <div class="aviso" id="opAviso"></div>
+        <div class="fila" style="margin-top:12px;">
+          <button type="submit" class="destacado"><img src="assets/icono-alertas.png" alt=""> Publicar opinión</button>
+        </div>
+        <p style="font-size:.8rem; color:var(--texto2); margin-top:8px;">
+          Sin groserías: los comentarios con lenguaje ofensivo no se publican.
+        </p>
+      </form>
+    </section>`;
+  montarEstrellas("#opAtencion");
+  montarEstrellas("#opLitros");
+  $("#formOpinion").addEventListener("submit", publicarOpinion);
+  pintarComentarios(est.id);
+}
+
+if (!est) mostrarNoEncontrada(); else pintarDetalle();
+</script>
+</body>
+</html>

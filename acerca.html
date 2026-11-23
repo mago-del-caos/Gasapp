@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cómo funciona — Gasapp</title>
+<meta name="description" content="Cómo funciona Gasapp: de dónde salen los precios, cómo se calculan las rutas y qué límites tienen los datos.">
+<link rel="icon" type="image/png" href="assets/logo-gasapp.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html" aria-label="Gasapp — ir al inicio">
+    <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
+    <div>
+      <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+    </div>
+  </a>
+  <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
+  <nav class="menu" id="menuNav" aria-label="Navegación principal">
+    <a href="index.html"><img src="assets/icono-favoritos.png" alt=""> Inicio</a>
+    <a href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Mapa</a>
+    <a href="calculadora.html"><img src="assets/icono-estadisticas.png" alt=""> Calculadora</a>
+    <a href="acerca.html"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona</a>
+    <button type="button" class="btn-instalar">📲 Descargar la app</button>
+  </nav>
+</header>
+<main>
+  <div class="aviso-datos" id="avisoDatos"></div>
+
+  <div class="titulo-seccion"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona Gasapp</div>
+  <section class="panel">
+    <div class="pasos">
+      <div class="paso">
+        <img src="assets/icono-buscar.png" alt="">
+        <div><strong>1. Precios oficiales, no inventados</strong>
+        <span>Los precios salen del listado público de la Comisión Nacional de Energía (CNE): son los que cada permisionario está obligado a reportar. Gasapp toma una «foto» de ese listado y te la muestra tal cual, con su fecha.</span></div>
+      </div>
+      <div class="paso">
+        <img src="assets/icono-mapa.png" alt="">
+        <div><strong>2. Tu ubicación y la ruta real</strong>
+        <span>Con el botón de GPS, la app calcula las distancias desde donde estás. En el <a href="mapa.html" style="color:var(--verde); font-weight:600;">mapa</a> puedes trazar la ruta por calles hasta cualquier estación (servicio de rutas OSRM sobre datos de OpenStreetMap) o abrirla en Google Maps.</span></div>
+      </div>
+      <div class="paso">
+        <img src="assets/icono-estadisticas.png" alt="">
+        <div><strong>3. Ahorro calculado, no prometido</strong>
+        <span>La <a href="calculadora.html" style="color:var(--verde); font-weight:600;">calculadora</a> compara la estación más barata contra la más cara de la zona con tus litros y tus cargas al mes, para que veas el ahorro real por carga y al mes.</span></div>
+      </div>
+      <div class="paso">
+        <img src="assets/icono-resenas.png" alt="">
+        <div><strong>4. La verdad de la comunidad</strong>
+        <span>Cada estación se puede calificar en dos cosas que el precio no dice: la <strong>atención</strong> del personal y si te cargan <strong>litros completos</strong>. Las opiniones pasan por un filtro de groserías: con lenguaje ofensivo, no se publican.</span></div>
+      </div>
+      <div class="paso">
+        <img src="assets/icono-tiempo.png" alt="">
+        <div><strong>5. Afluencia estimada por hora</strong>
+        <span>Cada estación muestra una gráfica de afluencia por hora y un tiempo de fila aproximado para que elijas cuándo ir. Es una estimación de Gasapp a partir de los patrones típicos de la zona, no una medición en vivo.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="titulo-seccion"><img src="assets/icono-ajustes.png" alt=""> Datos y límites honestos</div>
+  <section class="panel">
+    <div class="pasos">
+      <div class="paso">
+        <img src="assets/icono-ajustes.png" alt="">
+        <div><strong>Fuente y fecha de los datos</strong>
+        <span>Comisión Nacional de Energía (CNE), XML público de estaciones y precios reportados por los permisionarios (actualización diaria a las 18:00 h). La foto que muestra esta versión de Gasapp es del <strong id="fechaFoto"></strong> e incluye 26 estaciones alrededor de Tlatelolco, CDMX. Los precios cambian a diario: verifica siempre el precio en la bomba.</span></div>
+      </div>
+      <div class="paso">
+        <img src="assets/icono-alertas.png" alt="">
+        <div><strong>Lo que la fuente no trae</strong>
+        <span>El listado oficial no publica el domicilio de cada estación, solo su nombre, permiso y coordenadas; por eso las rutas y el botón «Cómo llegar» trabajan con las coordenadas exactas. La afluencia y el tiempo de fila son estimaciones, no mediciones en vivo.</span></div>
+      </div>
+      <div class="paso">
+        <img src="assets/icono-comunidad.png" alt="">
+        <div><strong>Comentarios: hoy en tu dispositivo, pronto para todos</strong>
+        <span>El plan es guardar las opiniones en Cloudflare (un Worker con base de datos D1) para que las vea toda la comunidad, con el mismo filtro de groserías aplicado también en el servidor. Mientras esa conexión no está activa, Gasapp funciona en <strong>modo local</strong>: tus opiniones se guardan solo en este dispositivo y nadie más las ve.</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><img src="assets/icono-ajustes.png" alt=""> <strong>Fuente de precios:</strong> Comisión Nacional de Energía (CNE), listado oficial de precios reportados por los permisionarios (XML público, actualización diaria 18:00 h). Gasapp muestra una foto de esos datos; verifica siempre el precio en la bomba.</p>
+  <p>Las calificaciones y comentarios son de la comunidad. Si la conexión con el servidor de comentarios no está activa, tus opiniones se guardan solo en este dispositivo (modo local).</p>
+</footer>
+<script src="datos.js"></script>
+<script src="app.js"></script>
+<script>
+"use strict";
+pintarAvisoDatos(document.getElementById("avisoDatos"));
+document.getElementById("fechaFoto").textContent = FECHA_FOTO;
+</script>
+</body>
+</html>
