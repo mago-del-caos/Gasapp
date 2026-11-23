@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rendimiento por carga — Gasapp</title>
+<meta name="description" content="Registra el kilometraje de tu odómetro en cada carga y descubre cuántos kilómetros por litro te rinde la gasolina de cada estación.">
+<link rel="icon" type="image/png" href="assets/logo-gasapp.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#04150f">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html" aria-label="Gasapp — ir al inicio">
+    <img class="logo" src="assets/logo-gasapp.png" alt="Logo de Gasapp">
+    <div>
+      <h1><span class="gas">Gas</span><span class="app">app</span></h1>
+      <p class="saludo">Hola · <span class="fecha-hoy"></span></p>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+    </div>
+  </a>
+  <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
+  <nav class="menu" id="menuNav" aria-label="Navegación principal">
+    <a href="index.html"><img src="assets/icono-favoritos.png" alt=""> Inicio</a>
+    <a href="mapa.html"><img src="assets/icono-mapa.png" alt=""> Mapa</a>
+    <a href="calculadora.html"><img src="assets/icono-estadisticas.png" alt=""> Calculadora</a>
+    <a href="rendimiento.html"><img src="assets/icono-tiempo.png" alt=""> Rendimiento</a>
+    <a href="radio.html"><img src="assets/icono-alertas.png" alt=""> Radio</a>
+    <a href="acerca.html"><img src="assets/icono-comunidad.png" alt=""> Cómo funciona</a>
+    <button type="button" class="btn-instalar">📲 Descargar la app</button>
+  </nav>
+</header>
+<main>
+  <div class="titulo-seccion"><img src="assets/icono-tiempo.png" alt=""> Rendimiento por carga</div>
+
+  <section class="panel">
+    <p class="consejo">Registra el kilometraje de tu odómetro en cada carga y Gasapp compara la carga anterior con la actual para decirte cuántos <strong>kilómetros por litro</strong> te rindió la gasolina. Es la otra cara de los «litros completos»: si una estación te rinde menos que otra con el mismo manejo, puede que no te esté dando los litros que pagas. Tus registros se guardan solo en este dispositivo.</p>
+  </section>
+
+  <section class="panel">
+    <div class="est-nombre">Registrar una carga</div>
+    <form id="formCarga" novalidate>
+      <div class="calc-grid" style="margin-top:12px;">
+        <label>Fecha
+          <input type="date" id="rFecha">
+        </label>
+        <label>Odómetro (km)
+          <input type="number" id="rOdometro" min="0" step="1" inputmode="numeric" placeholder="Ej. 10480">
+        </label>
+      </div>
+      <div class="campo">
+        <label for="rEstacion">Estación donde cargaste</label>
+        <select id="rEstacion"></select>
+      </div>
+      <div class="calc-grid" style="margin-top:13px;">
+        <label>Litros cargados
+          <input type="number" id="rLitros" min="0" step="0.01" inputmode="decimal" placeholder="Ej. 40">
+        </label>
+        <label>Precio por litro (opcional)
+          <input type="number" id="rPrecio" min="0" step="0.01" inputmode="decimal" placeholder="$/L">
+        </label>
+        <label>Monto total (opcional)
+          <input type="number" id="rMonto" min="0" step="0.01" inputmode="decimal" placeholder="$">
+        </label>
+      </div>
+      <p class="reg-meta" id="hintOdo" style="margin-top:10px;"></p>
+      <div class="fila" style="margin-top:12px;">
+        <button type="submit" class="destacado">Guardar carga</button>
+      </div>
+      <div class="aviso" id="rAviso" role="alert"></div>
+    </form>
+    <p class="consejo" style="margin-top:14px;"><strong>Consejo honesto:</strong> la métrica es más fiel si llenas el tanque en cada carga. Con cargas parciales, los kilómetros recorridos se reparten entre dos estaciones y el rendimiento de ambas se ve borroso.</p>
+  </section>
+
+  <section class="panel" id="panelResumen" hidden>
+    <div class="est-nombre">Tu resumen</div>
+    <div class="resumen" id="resumen" style="margin-top:12px;"></div>
+  </section>
+
+  <section class="panel" id="panelEstaciones" hidden>
+    <div class="est-nombre">Promedio por estación</div>
+    <p class="reg-meta" style="margin-top:4px;">Qué estación te rinde más, según tus propias cargas. El rendimiento de cada carga se atribuye a la estación donde la cargaste.</p>
+    <div id="porEstacion" style="margin-top:6px;"></div>
+  </section>
+
+  <section class="panel">
+    <div class="est-nombre">Historial de cargas</div>
+    <div id="historial" style="margin-top:6px;"></div>
+  </section>
+</main>
+
+<footer>
+  <p><img src="assets/icono-ajustes.png" alt=""> <strong>Fuente de precios:</strong> Comisión Nacional de Energía (CNE), listado oficial de precios reportados por los permisionarios (XML público, actualización diaria 18:00 h). Gasapp muestra una foto de esos datos; verifica siempre el precio en la bomba.</p>
+  <p>Las calificaciones y comentarios son de la comunidad. Si la conexión con el servidor de comentarios no está activa, tus opiniones se guardan solo en este dispositivo (modo local).</p>
+</footer>
+<script src="datos.js"></script>
+<script src="app.js"></script>
+<script>
+"use strict";
+/* ---------- Calculadora de rendimiento por carga ----------
+   Cada registro guarda el odómetro al cargar. El rendimiento de una
+   carga = km recorridos desde la carga anterior ÷ litros de esta carga.
+   Todo vive en localStorage: es la bitácora personal del conductor. */
+const REND_KEY = "gasapp_rendimiento";
+
+function leerRegistros() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(REND_KEY) || "[]");
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+function guardarRegistros(arr) {
+  try { localStorage.setItem(REND_KEY, JSON.stringify(arr)); } catch (e) { /* sin almacenamiento */ }
+}
+function nombreUnico(est) {
+  const repetido = ESTACIONES.some(e => e.id !== est.id && e.nombre === est.nombre);
+  return repetido ? est.nombre + " · " + est.permiso : est.nombre;
+}
+function fmtKm(n) { return n.toLocaleString("es-MX", { maximumFractionDigits: 0 }); }
+function fmtFecha(f) {
+  const p = String(f || "").split("-").map(Number);
+  if (p.length !== 3 || !p[0]) return esc(f || "");
+  return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+}
+/* Ordena por odómetro y adjunta a cada carga sus km recorridos y su rendimiento. */
+function conRendimiento(regs) {
+  const ord = [...regs].sort((a, b) => a.odometro - b.odometro);
+  return ord.map((r, i) => {
+    if (i === 0) return { ...r, kmRec: null, rend: null };
+    const kmRec = r.odometro - ord[i - 1].odometro;
+    return { ...r, kmRec, rend: (kmRec > 0 && r.litros > 0) ? kmRec / r.litros : null };
+  });
+}
+function mostrarAviso(tipo, texto) {
+  const a = $("#rAviso");
+  a.className = "aviso " + tipo;
+  a.textContent = texto;
+}
+
+/* ---------- Formulario ---------- */
+function llenarEstaciones() {
+  const sel = $("#rEstacion");
+  sel.innerHTML = "";
+  ESTACIONES.forEach(e => {
+    const op = document.createElement("option");
+    op.value = e.id;
+    op.textContent = nombreUnico(e);
+    sel.appendChild(op);
+  });
+  const otra = document.createElement("option");
+  otra.value = "otra";
+  otra.textContent = "Otra estación";
+  sel.appendChild(otra);
+}
+function fechaHoy() {
+  const h = new Date();
+  return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0") + "-" + String(h.getDate()).padStart(2, "0");
+}
+
+function alGuardar(ev) {
+  ev.preventDefault();
+  const regs = leerRegistros();
+  const fecha = $("#rFecha").value;
+  const odo = parseFloat($("#rOdometro").value);
+  const litros = parseFloat($("#rLitros").value);
+  const precioTxt = $("#rPrecio").value.trim();
+  const montoTxt = $("#rMonto").value.trim();
+  const precio = precioTxt === "" ? null : parseFloat(precioTxt);
+  const monto = montoTxt === "" ? null : parseFloat(montoTxt);
+
+  if (!fecha) { mostrarAviso("error", "Elige la fecha de la carga."); return; }
+  if (isNaN(odo) || odo <= 0) { mostrarAviso("error", "Anota el kilometraje de tu odómetro: debe ser un número mayor que cero."); return; }
+  if (isNaN(litros) || litros <= 0) { mostrarAviso("error", "Los litros cargados deben ser mayores que cero."); return; }
+  if ((precio !== null && (isNaN(precio) || precio < 0)) || (monto !== null && (isNaN(monto) || monto < 0))) {
+    mostrarAviso("error", "El precio por litro y el monto total no pueden ser negativos."); return;
+  }
+  if (regs.length) {
+    const maxOdo = Math.max(...regs.map(r => r.odometro));
+    if (odo <= maxOdo) {
+      mostrarAviso("error", "El odómetro (" + fmtKm(odo) + " km) debe ser mayor que el de tu última carga (" +
+        fmtKm(maxOdo) + " km). Revisa el número; si era la misma carga, bórrala primero del historial.");
+      return;
+    }
+  }
+
+  const sel = $("#rEstacion");
+  const estId = sel.value;
+  const estNombre = estId === "otra" ? "Otra estación" : nombreUnico(estacionPorId(estId) || { id: estId, nombre: sel.options[sel.selectedIndex].textContent, permiso: "" });
+  const nuevo = {
+    id: String(Date.now()) + "-" + Math.floor(Math.random() * 1e6),
+    fecha, estacionId: estId, estacionNombre: estNombre,
+    odometro: odo, litros, precio, monto
+  };
+  regs.push(nuevo);
+  guardarRegistros(regs);
+
+  $("#rOdometro").value = "";
+  $("#rLitros").value = "";
+  $("#rPrecio").value = "";
+  $("#rMonto").value = "";
+  renderTodo();
+
+  const mio = conRendimiento(regs).find(r => r.id === nuevo.id);
+  if (mio && mio.rend !== null) {
+    mostrarAviso("ok", "Carga registrada: recorriste " + fmtKm(mio.kmRec) + " km desde la carga anterior y te rindió " + mio.rend.toFixed(1) + " km/L.");
+  } else {
+    mostrarAviso("ok", "Carga registrada. Es tu punto de partida: con la siguiente carga verás tu primer rendimiento.");
+  }
+}
+
+/* ---------- Pintado ---------- */
+function renderResumen(med) {
+  const panel = $("#panelResumen");
+  if (!med.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  const kmTot = med.reduce((s, r) => s + r.kmRec, 0);
+  const litTot = med.reduce((s, r) => s + r.litros, 0);
+  const prom = kmTot / litTot;
+  const mejor = med.reduce((a, b) => (b.rend > a.rend ? b : a));
+  const peor = med.reduce((a, b) => (b.rend < a.rend ? b : a));
+  $("#resumen").innerHTML =
+    `<div class="res"><div class="res-tipo">Promedio general</div><div class="res-valor">${prom.toFixed(1)} <small>km/L</small></div><div class="res-det">${fmtKm(kmTot)} km con ${litTot.toFixed(1)} L medidos</div></div>` +
+    `<div class="res"><div class="res-tipo">Mejor carga</div><div class="res-valor">${mejor.rend.toFixed(1)} <small>km/L</small></div><div class="res-det">${esc(mejor.estacionNombre)} · ${fmtFecha(mejor.fecha)}</div></div>` +
+    `<div class="res"><div class="res-tipo">Peor carga</div><div class="res-valor">${peor.rend.toFixed(1)} <small>km/L</small></div><div class="res-det">${esc(peor.estacionNombre)} · ${fmtFecha(peor.fecha)}</div></div>`;
+}
+function renderEstaciones(med) {
+  const panel = $("#panelEstaciones");
+  const grupos = new Map();
+  med.forEach(r => {
+    const g = grupos.get(r.estacionId) || { nombre: r.estacionNombre, km: 0, litros: 0, n: 0 };
+    g.km += r.kmRec; g.litros += r.litros; g.n++;
+    grupos.set(r.estacionId, g);
+  });
+  const lista = [...grupos.values()].map(g => ({ ...g, prom: g.km / g.litros })).sort((a, b) => b.prom - a.prom);
+  if (!lista.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  const max = lista[0].prom;
+  $("#porEstacion").innerHTML = lista.map((g, i) =>
+    `<div class="prom-fila">
+      <div class="prom-info">
+        <div class="prom-nombre">${i === 0 ? "★ " : ""}${esc(g.nombre)}</div>
+        <div class="prom-meta">${g.n} carga(s) medida(s) · ${fmtKm(g.km)} km recorridos</div>
+        <div class="prom-barra"><i style="width:${max > 0 ? Math.round(g.prom / max * 100) : 0}%"></i></div>
+      </div>
+      <div class="prom-valor">${g.prom.toFixed(1)}<small>km/L</small></div>
+    </div>`).join("");
+}
+function renderHistorial(conR) {
+  const cont = $("#historial");
+  if (!conR.length) {
+    cont.innerHTML = `<p class="reg-meta">Todavía no registras ninguna carga. Anota la primera arriba: servirá de punto de partida y, a partir de la segunda, verás tu rendimiento.</p>`;
+    return;
+  }
+  cont.innerHTML = [...conR].reverse().map(r =>
+    `<div class="reg-item">
+      <div class="reg-info">
+        <div class="reg-est">${esc(r.estacionNombre)}</div>
+        <div class="reg-meta">${fmtFecha(r.fecha)} · Odómetro ${fmtKm(r.odometro)} km · ${r.litros} L` +
+          (r.precio !== null && r.precio !== undefined ? ` · ${dinero(r.precio)}/L` : "") +
+          (r.monto !== null && r.monto !== undefined ? ` · ${dinero(r.monto)}` : "") +
+          (r.kmRec ? ` · ${fmtKm(r.kmRec)} km recorridos` : "") + `</div>
+      </div>
+      <div class="reg-rend">${r.rend !== null
+        ? `<div class="num">${r.rend.toFixed(1)}</div><div class="km">km/L</div>`
+        : `<div class="num sin">—</div><div class="km">carga inicial</div>`}</div>
+      <button type="button" class="btn-borrar" data-borrar="${esc(r.id)}" aria-label="Borrar este registro">Borrar</button>
+    </div>`).join("");
+}
+function renderHint(regs) {
+  const el = $("#hintOdo");
+  if (!regs.length) { el.textContent = ""; return; }
+  const max = Math.max(...regs.map(r => r.odometro));
+  el.textContent = "Tu última carga quedó en " + fmtKm(max) + " km: el odómetro nuevo debe ser mayor.";
+}
+function renderTodo() {
+  const regs = leerRegistros();
+  const conR = conRendimiento(regs);
+  const med = conR.filter(r => r.rend !== null);
+  renderResumen(med);
+  renderEstaciones(med);
+  renderHistorial(conR);
+  renderHint(regs);
+}
+
+$("#formCarga").addEventListener("submit", alGuardar);
+$("#historial").addEventListener("click", ev => {
+  const btn = ev.target.closest("[data-borrar]");
+  if (!btn) return;
+  guardarRegistros(leerRegistros().filter(r => r.id !== btn.dataset.borrar));
+  renderTodo();
+  mostrarAviso("ok", "Registro borrado. Los rendimientos se recalcularon con las cargas que quedan.");
+});
+llenarEstaciones();
+$("#rFecha").value = fechaHoy();
+renderTodo();
+</script>
+</body>
+</html>

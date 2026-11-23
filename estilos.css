@@ -62,7 +62,7 @@
   button.activo{background:var(--verde); color:#03231d; border-color:transparent; font-weight:700; box-shadow:0 4px 14px rgba(0,229,199,.30);}
   button.destacado{background:var(--verde); color:#03231d; border-color:transparent; font-weight:700; box-shadow:0 4px 14px rgba(0,229,199,.30);}
   button:disabled{opacity:.55; cursor:default;}
-  input[type="search"], input[type="number"], input[type="text"], textarea{
+  input[type="search"], input[type="number"], input[type="text"], input[type="date"], textarea{
     font:inherit; color:var(--texto); background:var(--tarjeta2);
     border:1px solid rgba(0,229,199,.14); border-radius:12px; padding:10px 12px; width:100%;
     transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
@@ -356,3 +356,36 @@
   .barra-player .sonando-txt strong{color:var(--verde);}
   .barra-player label{font-size:.82rem; color:var(--texto2); font-weight:500; display:flex; align-items:center; gap:8px;}
   .nota-radio{font-size:.85rem; color:var(--texto2); line-height:1.55;}
+  /* ===== Rendimiento por carga ===== */
+  input[type="date"]{color-scheme:dark;}
+  .consejo{font-size:.9rem; color:var(--texto2); line-height:1.6;}
+  .consejo strong{color:var(--amarillo);}
+  .resumen{display:flex; gap:10px; flex-wrap:wrap;}
+  .res{
+    flex:1; min-width:104px; background:var(--tarjeta2); border:1px solid rgba(0,229,199,.08);
+    border-radius:16px; padding:12px 10px; text-align:center;
+  }
+  .res .res-tipo{font-size:.7rem; font-weight:600; color:var(--texto2); text-transform:uppercase; letter-spacing:.07em;}
+  .res .res-valor{font-size:1.3rem; font-weight:700; color:var(--verde); margin-top:3px;}
+  .res .res-valor small{font-size:.78rem; color:var(--texto2); font-weight:600;}
+  .res .res-det{font-size:.74rem; color:var(--texto2); margin-top:4px; line-height:1.4;}
+  .reg-item{display:flex; gap:12px; align-items:center; padding:12px 0; border-top:1px solid rgba(0,229,199,.10);}
+  .reg-item:first-child{border-top:none; padding-top:2px;}
+  .reg-info{flex:1; min-width:0;}
+  .reg-est{font-weight:600; font-size:.95rem; line-height:1.3;}
+  .reg-meta{color:var(--texto2); font-size:.8rem; margin-top:2px; line-height:1.5;}
+  .reg-rend{text-align:right; flex:none;}
+  .reg-rend .num{font-size:1.25rem; font-weight:700; color:var(--verde); line-height:1.1;}
+  .reg-rend .num.sin{color:var(--texto2); font-size:1rem;}
+  .reg-rend .km{font-size:.7rem; color:var(--texto2); margin-top:2px;}
+  .btn-borrar{flex:none; padding:7px 13px; font-size:.8rem;}
+  .prom-fila{display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid rgba(0,229,199,.10);}
+  .prom-fila:first-child{border-top:none;}
+  .prom-info{flex:1; min-width:0;}
+  .prom-nombre{font-weight:600; font-size:.92rem; line-height:1.3; color:var(--texto);}
+  .prom-nombre::first-letter{color:inherit;}
+  .prom-meta{color:var(--texto2); font-size:.76rem; margin-top:2px;}
+  .prom-barra{height:6px; border-radius:3px; background:#123c34; margin-top:6px; overflow:hidden;}
+  .prom-barra i{display:block; height:100%; background:var(--verde); border-radius:3px;}
+  .prom-valor{font-weight:700; color:var(--verde); font-size:1.05rem; flex:none; text-align:right; line-height:1.1;}
+  .prom-valor small{display:block; color:var(--texto2); font-weight:500; font-size:.68rem; margin-top:2px;}

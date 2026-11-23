@@ -19,7 +19,8 @@ afluencia estimada por hora y el tiempo de fila.
   - Estaciones: `https://publicacionexterna.azurewebsites.net/publicaciones/places`
   - Precios: `https://publicacionexterna.azurewebsites.net/publicaciones/prices`
 - **Varias páginas** con menú desplegable compartido: Inicio (lista), Mapa
-  GPS, detalle por estación, Calculadora, Radio en vivo y «Cómo funciona».
+  GPS, detalle por estación, Calculadora, Rendimiento por carga, Radio en
+  vivo y «Cómo funciona».
 - **Radio en vivo** (`radio.html`): cinco estaciones de la Ciudad de México
   con transmisión pública por internet verificada (Ibero 90.9, Radio UNAM
   96.1, W Radio 96.9, Reactor 105.7 y Radio Educación 1060), con un solo
@@ -39,6 +40,12 @@ afluencia estimada por hora y el tiempo de fila.
   ubicación se recuerda entre páginas durante la sesión.
 - **Orden** por mejor precio, cercanía o calificación de la comunidad.
 - **Calculadora de ahorro** por carga y al mes (más barata vs. más cara).
+- **Calculadora de rendimiento** (`rendimiento.html`): registra cada carga
+  con el kilometraje del odómetro y calcula los kilómetros por litro entre
+  cargas consecutivas, con promedio general, mejor/peor carga y **promedio
+  por estación** — la otra cara de los «litros completos»: si una estación
+  rinde menos, puede que no dé los litros que cobra. Los registros se
+  guardan solo en el dispositivo del conductor (localStorage).
 - **Detalle por estación** (`estacion.html?id=…`): precios, sello de mejor
   precio, afluencia estimada por hora, tiempo de fila aproximado, ruta en el
   mapa y opiniones de la comunidad.
@@ -61,6 +68,7 @@ afluencia estimada por hora y el tiempo de fila.
 | `mapa.html` | Mapa GPS (Leaflet + OpenStreetMap) con marcadores de precio y rutas por calles con OSRM. |
 | `estacion.html` | Detalle de una estación según `?id=`: precios, afluencia, ruta y opiniones. |
 | `calculadora.html` | Calculadora de ahorro: más barata vs. más cara, por carga y al mes. |
+| `rendimiento.html` | Calculadora de rendimiento por carga: odómetro y litros por carga, km/L entre cargas, promedios general y por estación (localStorage). |
 | `radio.html` | Radio en vivo: 5 estaciones de CDMX con streams públicos verificados, reproductor único y volumen. |
 | `acerca.html` | «Cómo funciona»: explicación, fuente de datos y límites honestos. |
 | `estilos.css` | Hoja de estilos compartida por todas las páginas. |
