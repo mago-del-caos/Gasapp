@@ -7,7 +7,7 @@
    Los servicios externos (mapa de OpenStreetMap, rutas OSRM y
    la API de comentarios) NO se cachean: van siempre a la red.
    ============================================================ */
-const CACHE = "gasapp-v4";
+const CACHE = "gasapp-v5";
 const PROPIOS = [
   "./",
   "index.html",

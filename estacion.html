@@ -18,7 +18,7 @@
     <div>
       <h1><span class="gas">Gas</span><span class="app">app</span></h1>
       <p class="saludo">Hola · <span class="fecha-hoy"></span></p>
-      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: servicio y litros completos.</p>
     </div>
   </a>
   <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
@@ -64,14 +64,16 @@ async function pintarComentarios(id) {
   const { lista, fuente } = await cargarComentarios(id);
   resumenes[id] = resumir(lista);
   const r = resumenes[id];
-  $("#resumenDet").innerHTML = r
-    ? `<span class="calif">★ ${((r.promA + r.promL) / 2).toFixed(1)} <small>· Atención ${r.promA.toFixed(1)} · Litros completos ${r.promL.toFixed(1)} · ${r.n} opinión(es)${fuente === "local" ? " · guardadas en este dispositivo" : ""}</small></span>`
-    : `<span class="sin-calif">Todavía no hay opiniones de esta estación.</span>`;
+  $("#valoracion").innerHTML = r ? `
+      <div class="valoracion-fila"><span class="valoracion-criterio">Litros completos</span>${pintarEstrellas(r.promL)}<strong>${r.promL.toFixed(1)}</strong></div>
+      <div class="valoracion-fila"><span class="valoracion-criterio">Servicio</span>${pintarEstrellas(r.promA)}<strong>${r.promA.toFixed(1)}</strong></div>
+      <p style="font-size:.85rem; color:var(--texto2); margin-top:9px;">${r.n} opinión(es) de la comunidad${fuente === "local" ? " · guardadas en este dispositivo" : ""}</p>`
+    : `<p class="sin-calif">Todavía no hay opiniones de esta estación. Si ya cargaste aquí, sé el primero en valorarla con el formulario de abajo.</p>`;
   $("#listaComentarios").innerHTML = lista.length ? lista.map(c => `
     <div class="comentario">
       <span class="quien">${esc(c.nombre || "Anónimo")}</span>
       <span class="cuando">· ${esc((c.creado_en || c.fecha || "").toString().slice(0, 10))}</span><br>
-      <span class="calif">Atención ★${c.atencion} · Litros ★${c.litros}</span>
+      <span class="calif">Servicio ★${c.atencion} · Litros completos ★${c.litros}</span>
       <p>${esc(c.texto)}</p>
     </div>`).join("") : "";
 }
@@ -84,7 +86,7 @@ async function publicarOpinion(ev) {
   const litros = +($("#opLitros").dataset.valor || 0);
   const texto = $("#opTexto").value.trim();
   const nombre = $("#opNombre").value.trim();
-  if (!atencion || !litros) { aviso.className = "aviso error"; aviso.textContent = "Califica la atención y los litros con las estrellas."; return; }
+  if (!atencion || !litros) { aviso.className = "aviso error"; aviso.textContent = "Califica el servicio y los litros completos con las estrellas: ambas valoraciones son obligatorias."; return; }
   if (texto.length < 3) { aviso.className = "aviso error"; aviso.textContent = "Escribe un comentario un poco más completo."; return; }
   if (contieneGroserias(texto) || (nombre && contieneGroserias(nombre))) {
     aviso.className = "aviso error";
@@ -140,8 +142,12 @@ function pintarDetalle() {
     </section>
 
     <section class="panel">
+      <div class="titulo-seccion" style="margin-top:0;"><img src="assets/icono-resenas.png" alt=""> Valoración</div>
+      <div id="valoracion"><p style="color:var(--texto2);">Cargando…</p></div>
+    </section>
+
+    <section class="panel">
       <div class="titulo-seccion" style="margin-top:0;"><img src="assets/icono-comunidad.png" alt=""> Opiniones de la comunidad</div>
-      <div id="resumenDet"></div>
       <div id="listaComentarios"><p style="color:var(--texto2);">Cargando…</p></div>
       <div class="titulo-seccion"><img src="assets/icono-resenas.png" alt=""> Deja tu opinión</div>
       <form id="formOpinion">
@@ -150,16 +156,16 @@ function pintarDetalle() {
           <input type="text" id="opNombre" maxlength="60" placeholder="Ej. Vecino de Tlatelolco">
         </div>
         <div class="campo">
-          <label>Atención del personal</label>
+          <label>¿Cómo fue el servicio?</label>
           <span class="estrellas" id="opAtencion"></span>
         </div>
         <div class="campo">
-          <label>Litros completos (¿te cargaron lo que pagaste?)</label>
+          <label>¿Te dieron litros completos?</label>
           <span class="estrellas" id="opLitros"></span>
         </div>
         <div class="campo">
           <label>Tu comentario</label>
-          <textarea id="opTexto" maxlength="500" placeholder="Cuénta cómo te fue: atención, litros, fila, servicios…"></textarea>
+          <textarea id="opTexto" maxlength="500" placeholder="Cuénta cómo te fue: servicio, litros completos, fila…"></textarea>
         </div>
         <div class="aviso" id="opAviso"></div>
         <div class="fila" style="margin-top:12px;">

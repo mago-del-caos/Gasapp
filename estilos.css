@@ -107,6 +107,19 @@
   .calif{font-size:.88rem; font-weight:600; color:#f5b921;}
   .calif small{color:var(--texto2); font-weight:400;}
   .sin-calif{font-size:.85rem; color:var(--texto2);}
+  /* Estrellas gráficas de un promedio (pintarEstrellas) */
+  .estrellas-ver{display:inline-flex; gap:1px; font-size:.95rem; line-height:1; vertical-align:-1px;}
+  .estrellas-ver .est{color:#27544b;}
+  .estrellas-ver .est.llena{color:#ffb340;}
+  .estrellas-ver .est.media{
+    background:linear-gradient(90deg,#ffb340 50%,#27544b 50%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  /* Sección «Valoración» del detalle de estación */
+  .valoracion-fila{display:flex; align-items:center; gap:10px; margin-top:9px; font-size:.95rem; flex-wrap:wrap;}
+  .valoracion-fila .valoracion-criterio{min-width:132px; color:var(--texto2); font-weight:500;}
+  .valoracion-fila .estrellas-ver{font-size:1.18rem;}
+  .valoracion-fila strong{color:#f5b921;}
   /* Modal de detalle */
   #velo{
     position:fixed; inset:0; background:rgba(0,0,0,.62); z-index:50;

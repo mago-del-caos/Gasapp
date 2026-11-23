@@ -5,8 +5,8 @@
 Gasapp es una app web para México que muestra los precios de gasolina y diésel
 por estación de servicio (datos oficiales), encuentra la opción más barata cerca
 de tu ubicación, traza la ruta por calles hasta la estación que elijas y recoge
-las calificaciones de los propios usuarios: atención del personal y **litros
-completos** (si te cargan lo que pagas o te dan de menos), además de la
+las calificaciones de los propios usuarios: el **servicio** del personal y los
+**litros completos** (si te cargan lo que pagas o te dan de menos), además de la
 afluencia estimada por hora y el tiempo de fila.
 
 ## Qué trae esta versión
@@ -39,7 +39,10 @@ afluencia estimada por hora y el tiempo de fila.
   estación por nombre o permiso, cuánto se ahorra por carga y al mes, la
   estación más cercana, la hora con menos gente según el modelo de
   afluencia (estimación), las estaciones de radio (y puede ponerlas a
-  sonar: «pon Reactor») y el rendimiento promedio del conductor.
+  sonar: «pon Reactor»), el rendimiento promedio del conductor y la
+  valoración de la comunidad («¿cuál es la mejor valorada?», «¿dónde dan
+  litros completos?», «¿cuál tiene mejor servicio?»), desde las opiniones
+  conocidas en el dispositivo.
 - **App instalable (PWA)**: botón «📲 Descargar la app» en el Inicio y en el
   menú de todas las páginas. En Android/Chrome dispara el aviso de
   instalación del navegador; en iPhone/Safari muestra los pasos (Compartir →
@@ -59,7 +62,8 @@ afluencia estimada por hora y el tiempo de fila.
   aquí» — por encima de los marcadores de precio y visible también como
   punto de partida al trazar la ruta. Si el GPS falla, el mapa se queda
   con la referencia de Tlatelolco y lo avisa en su línea de estado.
-- **Orden** por mejor precio, cercanía o calificación de la comunidad.
+- **Orden** por mejor precio, cercanía o **mejor valoradas** (promedio
+  combinado de la comunidad; las estaciones sin opiniones van al final).
 - **Calculadora de ahorro** por carga y al mes (más barata vs. más cara).
 - **Calculadora de rendimiento** (`rendimiento.html`): registra cada carga
   con el kilometraje del odómetro y calcula los kilómetros por litro entre
@@ -73,6 +77,15 @@ afluencia estimada por hora y el tiempo de fila.
 - **Comentarios y calificaciones** con filtro de groserías en español
   (cliente y servidor). Si la API no está conectada, la app funciona en
   **modo local**: guarda las opiniones solo en el dispositivo.
+- **Sistema de valoración con estrellas**: cada opinión califica con
+  estrellas dos criterios **obligatorios** — «¿Te dieron litros
+  completos?» y «¿Cómo fue el servicio?» (los campos guardados siguen
+  siendo `litros` y `atencion`, compatibles con el Worker). Cada estación
+  muestra su valoración con estrellas gráficas (llenas, medias y vacías
+  según el promedio): en las tarjetas del Inicio va el promedio combinado
+  con el desglose «Litros completos · Servicio», y el detalle de la
+  estación trae su sección **«Valoración»** con una fila de estrellas por
+  criterio y el número de opiniones.
 - **Identidad visual propia**: tema oscuro estilo App CDMX (fondo verde
   casi negro, superficies verde petróleo, acento turquesa y títulos en
   dorado), encabezado con saludo y fecha, tarjeta héroe «Precio y ahorro

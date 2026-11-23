@@ -166,10 +166,23 @@ function bloquePrecio(est, fuel, selFuel) {
   if (p === null) return `<div class="precio sin${sel}"><div class="tipo">${NOMBRES_FUEL[fuel]}</div><div class="valor">—</div></div>`;
   return `<div class="precio${sel}"><div class="tipo">${NOMBRES_FUEL[fuel]}</div><div class="valor">${dinero(p)}</div></div>`;
 }
+/* ---------- Valoración con estrellas: promedio → 5 estrellas gráficas ----------
+   Llena si el promedio cubre ≥75% del tramo de esa estrella; media si
+   cubre ≥25%; si no, vacía. Ej.: 4.2 → ★★★★☆ · 4.5 → ★★★★ y media. */
+function pintarEstrellas(prom) {
+  const p = Math.max(0, Math.min(5, +prom || 0));
+  let html = '<span class="estrellas-ver" aria-hidden="true">';
+  for (let i = 1; i <= 5; i++) {
+    const clase = p >= i - 0.25 ? "llena" : (p >= i - 0.75 ? "media" : "vacia");
+    html += `<span class="est ${clase}">★</span>`;
+  }
+  return html + "</span>";
+}
 function bloqueCalif(est) {
   const r = resumenes[est.id];
   if (!r) return `<span class="sin-calif">Sin calificaciones todavía — sé el primero en opinar</span>`;
-  return `<span class="calif">★ ${((r.promA + r.promL) / 2).toFixed(1)} <small>· Atención ${r.promA.toFixed(1)} · Litros ${r.promL.toFixed(1)} · ${r.n} opinión(es)</small></span>`;
+  const comb = (r.promA + r.promL) / 2;
+  return `<span class="calif">${pintarEstrellas(comb)} ${comb.toFixed(1)} <small>· Litros completos ${r.promL.toFixed(1)} · Servicio ${r.promA.toFixed(1)} · ${r.n} opinión(es)</small></span>`;
 }
 function enlaceGoogleMaps(est) {
   return "https://www.google.com/maps/dir/?api=1&destination=" + est.lat + "," + est.lng;
@@ -573,6 +586,23 @@ function botRegistrosRendimiento() {
   if (!n || litros <= 0) return { conDatos: false };
   return { conDatos: true, promedio: km / litros, n };
 }
+function botResumenDe(est) {
+  // Agregado conocido en este dispositivo: el ya cargado (de la API, si
+  // cargó) o, si no, el calculado de las opiniones guardadas localmente.
+  if (resumenes[est.id]) return resumenes[est.id];
+  return resumir(comentariosLocales(est.id));
+}
+function botMejorValorada(criterio) { // criterio: "litros" | "servicio" | "combinada"
+  let mejor = null, mejorClave = -1;
+  for (const e of ESTACIONES) {
+    const r = botResumenDe(e);
+    if (!r) continue;
+    const clave = criterio === "litros" ? r.promL :
+      criterio === "servicio" ? r.promA : (r.promA + r.promL) / 2;
+    if (clave > mejorClave) { mejorClave = clave; mejor = { est: e, r, clave }; }
+  }
+  return mejor;
+}
 function botRespuesta(textoCrudo) {
   const t = " " + normalizar(textoCrudo) + " ";
   const fuel = /premium/.test(t) ? "premium" : /diesel/.test(t) ? "diesel" : "regular";
@@ -610,6 +640,30 @@ function botRespuesta(textoCrudo) {
     return "Todavía no tienes cargas suficientes en tu bitácora para calcular tu rendimiento " +
       "(se necesitan al menos dos cargas con odómetro). Registra tus cargas en la página de " +
       "<strong>Rendimiento</strong> y te digo tu promedio en km/L.";
+  }
+
+  /* --- Valoración de la comunidad: litros completos y servicio --- */
+  if (/(valorad|calificad|litros completos|mejor servicio|buen servicio)/.test(t)) {
+    const criterio = /litros/.test(t) ? "litros" : /servicio/.test(t) ? "servicio" : "combinada";
+    const m = botMejorValorada(criterio);
+    if (!m) {
+      return "Todavía no hay opiniones registradas en este dispositivo, así que aún no puedo " +
+        "decirte cuál es la mejor valorada. Cuando cargues gasolina, deja tu opinión en la ficha " +
+        "de la estación: se califica con estrellas si te dieron <strong>litros completos</strong> " +
+        "y cómo fue el <strong>servicio</strong>.";
+    }
+    const desglose = "Litros completos <strong>" + m.r.promL.toFixed(1) + "</strong> · Servicio <strong>" +
+      m.r.promA.toFixed(1) + "</strong>, con " + m.r.n + " opinión(es) conocida(s) en este dispositivo";
+    if (criterio === "litros") {
+      return "Donde mejor dan <strong>litros completos</strong>, según las opiniones de la comunidad, " +
+        "es en <strong>" + esc(m.est.nombre) + "</strong>" + botDistanciaTxt(m.est) + ": " + desglose + ".";
+    }
+    if (criterio === "servicio") {
+      return "El mejor <strong>servicio</strong>, según las opiniones de la comunidad, está en " +
+        "<strong>" + esc(m.est.nombre) + "</strong>" + botDistanciaTxt(m.est) + ": " + desglose + ".";
+    }
+    return "La estación <strong>mejor valorada</strong> es <strong>" + esc(m.est.nombre) + "</strong>" +
+      botDistanciaTxt(m.est) + ", con promedio de <strong>" + m.clave.toFixed(1) + "</strong>: " + desglose + ".";
   }
 
   /* --- Afluencia --- */
@@ -691,7 +745,8 @@ function botRespuesta(textoCrudo) {
   /* --- Fuera de tema --- */
   return "Eso todavía no lo sé contestar. Puedo ayudarte con: la gasolina <strong>más barata</strong>, " +
     "el <strong>precio de una estación</strong>, <strong>cuánto ahorras</strong> por carga, la estación " +
-    "<strong>más cercana</strong>, la hora con <strong>menos gente</strong>, poner la <strong>radio</strong> " +
+    "<strong>más cercana</strong>, la <strong>mejor valorada</strong> en litros completos y servicio, la hora " +
+    "con <strong>menos gente</strong>, poner la <strong>radio</strong> " +
     "y tu <strong>rendimiento</strong> en km/L.";
 }
 /* ---------- Interfaz del chat ---------- */

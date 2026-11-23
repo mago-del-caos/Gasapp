@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gasapp — Precios de gasolina cerca de ti</title>
-<meta name="description" content="Gasapp: encuentra la gasolina más barata cerca de ti, con calificaciones de atención y litros completos reportadas por la comunidad.">
+<meta name="description" content="Gasapp: encuentra la gasolina más barata cerca de ti, con calificaciones de servicio y litros completos reportadas por la comunidad.">
 <link rel="icon" type="image/png" href="assets/logo-gasapp.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="manifest" href="manifest.json">
@@ -18,7 +18,7 @@
     <div>
       <h1><span class="gas">Gas</span><span class="app">app</span></h1>
       <p class="saludo">Hola · <span class="fecha-hoy"></span></p>
-      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: atención y litros completos.</p>
+      <p>La gasolina más barata cerca de ti, con la verdad de la comunidad: servicio y litros completos.</p>
     </div>
   </a>
   <button class="btn-menu" id="btnMenu" aria-label="Abrir el menú de navegación" aria-haspopup="true" aria-expanded="false" aria-controls="menuNav">☰</button>
@@ -105,7 +105,7 @@
       <span class="etiqueta">Ordenar por:</span>
       <button data-sort="precio" class="sort activo"><img src="assets/icono-favoritos.png" alt=""> Mejor precio</button>
       <button data-sort="cerca" class="sort"><img src="assets/icono-mapa.png" alt=""> Cercanía</button>
-      <button data-sort="calif" class="sort"><img src="assets/icono-resenas.png" alt=""> Calificación</button>
+      <button data-sort="calif" class="sort"><img src="assets/icono-resenas.png" alt=""> Mejor valoradas</button>
     </div>
     <div class="fila">
       <div class="buscador">
@@ -162,10 +162,15 @@ function listaOrdenada() {
     const r = resumenes[e.id];
     return r ? (r.promA + r.promL) / 2 : -1;
   };
+  if (orden === "calif") {
+    // Mejor valoradas: promedio combinado descendente sobre TODA la lista;
+    // las estaciones sin opiniones (clave -1) quedan al final.
+    arr.sort((a, b) => (claveCalif(b) - claveCalif(a)) || (a.dist - b.dist));
+    return arr;
+  }
   const ordenadores = {
     precio: (a, b) => precioDe(a, combustible) - precioDe(b, combustible),
-    cerca: (a, b) => a.dist - b.dist,
-    calif: (a, b) => claveCalif(b) - claveCalif(a)
+    cerca: (a, b) => a.dist - b.dist
   };
   conPrecio.sort(ordenadores[orden]);
   sinPrecio.sort((a, b) => a.dist - b.dist);
